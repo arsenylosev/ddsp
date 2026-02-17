@@ -1,6 +1,9 @@
 [build-system]
-requires = ["setuptools<70.0.0", "wheel"]
+requires = ["setuptools>=60.0.0,<70.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.uv]
+package = true
 
 [project]
 name = "ddsp"
@@ -8,7 +11,7 @@ version = "3.7.0"
 description = "Differentiable Digital Signal Processing"
 readme = "README.md"
 license = {text = "Apache-2.0"}
-requires-python = ">=3.10, <3.11"
+requires-python = ">=3.11, <3.13"
 authors = [
     {name = "Google Inc.", email = "no-reply@google.com"}
 ]
@@ -19,49 +22,46 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "absl-py==1.4.0",
-    "apache-beam==2.46.0",
+    "absl-py>=2.0.0",
     "cloudml-hypertune==0.1.0.dev6",
-    "crepe==0.0.16",
-    "dill==0.3.1.1",
-    "future==1.0.0",
-    "gin-config==0.5.0",
-    "google-cloud-storage>=1.42.0,<2.0.0",
+    "crepe>=0.0.16",
+    "dill>=0.3.1.1",
+    "future>=1.0.0",
+    "gin-config>=0.5.0",
+    "google-cloud-storage>=1.42.0,<3.0.0",
     "hmmlearn>=0.2.7",
-    "librosa==0.10.0",
-    "matplotlib<3.8.0",
-    "pyparsing>=2.0.3,<3.0.0",
-    "pydub==0.25.1",
-    "protobuf>=3.9.2,<3.19.5",
-    "mir_eval==0.7",
-    "note_seq==0.0.3",
-    "numpy==1.23.5",
-    "scipy==1.10.1",
-    "setuptools<70.0.0",
-    "six==1.17.0",
-    "tensorflow==2.11.0",
-    "tensorflowjs==3.18.0",
-    "tensorflow-probability==0.19.0",
-    "tensorflow-datasets==4.9.0",
+    "librosa>=0.10.0",
+    "matplotlib>=3.7.0",
+    "pyparsing>=2.0.3,<4.0.0",
+    "pydub>=0.25.1",
+    "protobuf>=3.9.2,<5.0.0",
+    "mir_eval>=0.7",
+    "note_seq>=0.0.3",
+    "numpy>=1.23.5,<2.0.0",
+    "scipy>=1.10.1,<1.14.0",
+    "setuptools>=60.0.0,<70.0.0",
+    "six>=1.17.0",
+    "tensorflow>=2.15.0,<2.16.0",
+    "tensorflowjs>=4.0.0",
+    "tensorflow-probability==0.22.0",
+    "tensorflow-datasets>=4.9.0",
 ]
 
 [project.optional-dependencies]
 gcp = [
-    "gevent",
-    "google-api-python-client",
-    "google-compute-engine",
-    "oauth2client",
+    "google-api-python-client>=2.0.0",
 ]
 data_preparation = [
-    "apache_beam",
-    "pyparsing<=2.4.7",
+    "apache_beam>=2.51.0,<2.60.0",
+    "pyparsing>=2.0.3,<4.0.0",
 ]
 test = [
     "pytest",
-    "pylint!=2.5.0",
+    "pylint>=2.0.0,<3.0.0",
 ]
 
 [project.scripts]
@@ -80,7 +80,7 @@ ddsp = ["*.gin"]
 [dependency-groups]
 dev = [
     "pytest",
-    "pylint!=2.5.0",
-    "apache_beam",
-    "pyparsing<=2.4.7",
+    "pylint>=2.0.0,<3.0.0",
+    "apache_beam>=2.51.0,<2.60.0",
+    "pyparsing>=2.0.3,<4.0.0",
 ]

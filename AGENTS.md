@@ -1,34 +1,32 @@
 # AGENTS.md - DDSP Development Guide
 
-AI agent guidelines for working on the DDSP (Differentiable Digital Signal Processing) codebase. Version 3.7.0, Apache-2.0 licensed.
+AI agent guidelines for the DDSP (Differentiable Digital Signal Processing) codebase. Apache-2.0 licensed.
 
 ## Environment Setup
 
-**Python**: 3.10 required (TensorFlow 2.11 incompatibility with 3.11)
+**Python**: 3.11-3.12 required (TensorFlow 2.15.1 + TFP 0.22.0)
 
 **Installation**:
 ```bash
-uv sync --no-build-isolation  # recommended (required for legacy packages like crepe)
-pip install -e .[data_preparation,test]  # alternative
+uv sync --no-build-isolation  # required for legacy packages like crepe
+source .venv/bin/activate
 ```
-
-**Dependencies**: `pyproject.toml` and `requirements.txt`
 
 ## Build/Lint/Test Commands
 
 ### Testing
 ```bash
-pytest                      # all tests
-pytest ddsp/core_test.py    # single file
-pytest ddsp/core_test.py::test_midi_to_hz_is_accurate  # single test
-pytest -v                   # verbose
-pytest --cov=ddsp           # with coverage
+PYTHONPATH=$(pwd):$PYTHONPATH pytest                      # all tests
+PYTHONPATH=$(pwd):$PYTHONPATH pytest ddsp/core_test.py    # single file
+PYTHONPATH=$(pwd):$PYTHONPATH pytest ddsp/core_test.py::test_midi_to_hz_is_accurate  # single test
+PYTHONPATH=$(pwd):$PYTHONPATH pytest -v --tb=short        # verbose (avoids absl.flags conflict)
+PYTHONPATH=$(pwd):$PYTHONPATH pytest --cov=ddsp           # with coverage
 ```
 
 ### Linting
 ```bash
-pylint ddsp           # entire codebase
-pylint ddsp/core.py   # specific file
+pylint ddsp              # entire codebase
+pylint ddsp/core.py      # specific file
 pylint --errors-only ddsp  # errors only
 ```
 
@@ -45,10 +43,6 @@ Every file must include the Apache-2.0 license header:
 # Copyright 2026 The DDSP Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
 ```
 
 ### Imports
@@ -75,7 +69,7 @@ TensorDict = Dict[Text, tf.Tensor]
 Number = TypeVar('Number', int, float, np.ndarray, tf.Tensor)
 ```
 
-### Naming
+### Naming Conventions
 - Variables/functions: `snake_case`
 - Classes: `PascalCase`
 - Constants: `UPPER_SNAKE_CASE`
@@ -127,31 +121,43 @@ ddsp/
   training/       # Training infrastructure
 ```
 
-## Data Preparation Optimizations
-
-### ddsp_prepare_tfrecord Performance
-
-The `ddsp_prepare_tfrecord` command has been optimized with the following improvements:
-
-**Single-Pass Audio Loading**: Audio is loaded once at 16kHz and resampled if needed, eliminating redundant I/O (~50% reduction for non-16kHz).
-
-**Combined Feature Computation**: F0 and loudness are computed in a single `beam.Map` call.
-
-**Progress Tracking**: Thread-safe ProgressTracker with `--progress_bar`, `--max_workers`, `--cache_size` flags. Uses logging-based output compatible with Apache Beam parallel processing.
-
 ## Known Issues
 
-1. **Test failures**: `absl.flags` conflicts with pytest arguments in `prepare_tfrecord_lib_test.py`
-2. **Python version**: Must use 3.10, not 3.11
-
-## Key Dependencies
-
-- TensorFlow 2.11.0, NumPy 1.23.5, SciPy 1.10.1
-- librosa 0.10.0, gin-config 0.5.0, TensorFlow Probability 0.19.0
-- apache-beam 2.46.0, pydub, tqdm, crepe 0.0.16
+1. **absl.flags conflict**: `prepare_tfrecord_lib_test.py` fails with pytest verbose flags. Run without `-v` or use `--tb=short`.
 
 ## Code to Avoid
 
 - `absl.flags` (conflicts with pytest)
 - `pkg_resources` (removed in setuptools 70+)
 - Deprecated TensorFlow APIs
+
+## Key Dependencies
+
+- TensorFlow 2.15.1, NumPy 1.26.4, SciPy 1.10.1
+- librosa 0.10.0, gin-config 0.5.0, TensorFlow Probability 0.22.0
+- apache-beam 2.59.0, pydub, tqdm, crepe 0.0.16
+- pylint 2.x (required for apache-beam compatibility)
+- setuptools>=60.0.0,<70.0.0 (required for crepe)
+
+## Tensor Operations
+
+- Use `core.tf_float32()` to ensure float32 conversion
+- Handle batch dimensions explicitly: check `len(shape)` before operations
+- Use `tf.squeeze()`/`tf.expand_dims()` for shape manipulation
+- Prefer `tf.signal.stft` over `librosa.stft` for differentiable ops
+- Cast numpy arrays to tensors before TF operations: `tf.constant(arr, dtype=tf.float32)`
+
+## Audio Conventions
+
+- Sample rate: 16000 Hz (default for CREPE pitch detection)
+- Frame sizes: 2048, 4096, or 8192 (power of 2)
+- Overlap: 0.75 (75%) standard for STFT
+- MIDI range: 0-127, f0_hz: 0-20000 Hz
+- Audio tensors: `[batch, samples]` or `[samples]` (squeeze channel dim)
+
+## Git Workflow
+
+- Create feature branches for changes
+- Run linting and tests before committing
+- Use conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`
+- Push to remote regularly for backup
