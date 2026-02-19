@@ -23,6 +23,18 @@ import tensorflow.compat.v2 as tf
 
 CREPE_SAMPLE_RATE = spectral_ops.CREPE_SAMPLE_RATE  # 16kHz.
 
+_crepe_model = None
+_crepe_model_size = "tiny"
+
+
+def _get_crepe_model(model_size="tiny"):
+    """Get or create a cached CREPE model for GPU-accelerated inference."""
+    global _crepe_model, _crepe_model_size
+    if _crepe_model is None or _crepe_model_size != model_size:
+        _crepe_model = spectral_ops.PretrainedCREPE(model_size)
+        _crepe_model_size = model_size
+    return _crepe_model
+
 
 def _load_audio_as_array(audio_path, sample_rate):
     """Load audio file at specified sample rate and return an array.
@@ -119,18 +131,25 @@ def _load_audio_with_callback(audio_path, sample_rate, progress_callback):
 
 
 def _add_f0_estimate(ex, frame_rate, center, viterbi):
-    """Add fundamental frequency (f0) estimate using CREPE."""
+    """Add fundamental frequency (f0) estimate using GPU-accelerated CREPE."""
     beam.metrics.Metrics.counter("prepare-tfrecord", "estimate-f0").inc()
     audio = ex["audio_16k"]
     padding = "center" if center else "same"
-    f0_hz, f0_confidence = spectral_ops.compute_f0(
-        audio, frame_rate, viterbi=viterbi, padding=padding
+
+    audio_np = audio.numpy() if hasattr(audio, "numpy") else audio
+    model = _get_crepe_model("tiny")
+    f0_hz, f0_confidence = model.predict_f0_and_confidence(
+        audio_np, viterbi=viterbi, padding=padding
     )
+
+    f0_hz = f0_hz.numpy().astype(np.float32).squeeze()
+    f0_confidence = f0_confidence.numpy().astype(np.float32).squeeze()
+
     ex = dict(ex)
     ex.update(
         {
-            "f0_hz": f0_hz.astype(np.float32),
-            "f0_confidence": f0_confidence.astype(np.float32),
+            "f0_hz": f0_hz,
+            "f0_confidence": f0_confidence,
         }
     )
     return ex
@@ -155,9 +174,13 @@ def _add_features(ex, frame_rate, n_fft, center, viterbi):
     audio = ex["audio_16k"]
     padding = "center" if center else "same"
 
-    f0_hz, f0_confidence = spectral_ops.compute_f0(
-        audio, frame_rate, viterbi=viterbi, padding=padding
+    audio_np = audio.numpy() if hasattr(audio, "numpy") else audio
+    model = _get_crepe_model("tiny")
+    f0_hz, f0_confidence = model.predict_f0_and_confidence(
+        audio_np, viterbi=viterbi, padding=padding
     )
+    f0_hz = f0_hz.numpy().astype(np.float32).squeeze()
+    f0_confidence = f0_confidence.numpy().astype(np.float32).squeeze()
 
     loudness_db = spectral_ops.compute_loudness(
         audio, CREPE_SAMPLE_RATE, frame_rate, n_fft, padding=padding
@@ -166,8 +189,8 @@ def _add_features(ex, frame_rate, n_fft, center, viterbi):
     ex = dict(ex)
     ex.update(
         {
-            "f0_hz": f0_hz.astype(np.float32),
-            "f0_confidence": f0_confidence.astype(np.float32),
+            "f0_hz": f0_hz,
+            "f0_confidence": f0_confidence,
             "loudness_db": loudness_db.numpy().astype(np.float32),
         }
     )
@@ -246,6 +269,7 @@ def prepare_tfrecord(
     chunk_secs=20.0,
     center=False,
     viterbi=True,
+    crepe_model="tiny",
     pipeline_options=(),
     progress_callback=None,
 ):
@@ -272,11 +296,15 @@ def prepare_tfrecord(
       center: Provide zero-padding to audio so that frame timestamps will be
         centered.
       viterbi: Use viterbi decoding of pitch.
+      crepe_model: CREPE model size: tiny, small, medium, large, full.
+        Smaller models are faster but less accurate.
       pipeline_options: An iterable of command line arguments to be used as
         options for the Beam Pipeline.
       progress_callback: Optional callback function to call after each audio
         file is processed. Useful for progress bar updates.
     """
+
+    _get_crepe_model(crepe_model)
 
     def postprocess_pipeline(examples, output_path, stage_name=""):
         """After chunking, features, and train-eval split, create TFExamples."""

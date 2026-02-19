@@ -108,6 +108,18 @@ flags.DEFINE_integer(
     None,
     "Maximum number of workers for parallel processing. Default is auto.",
 )
+flags.DEFINE_string(
+    "crepe_model",
+    "tiny",
+    "CREPE model size for pitch detection: tiny, small, medium, large, full. "
+    "Smaller models are faster but less accurate.",
+)
+flags.DEFINE_boolean(
+    "mixed_precision",
+    False,
+    "Use mixed precision (float16) for GPU acceleration. "
+    "Requires GPU with tensor cores.",
+)
 flags.DEFINE_integer(
     "cache_size",
     1000,
@@ -165,6 +177,15 @@ def run():
 
     print(f"Found {total_files} audio files to process.")
 
+    if FLAGS.mixed_precision:
+        try:
+            from tensorflow.keras import mixed_precision
+
+            mixed_precision.set_global_policy("mixed_float16")
+            print("Enabled mixed precision (float16) for GPU acceleration.")
+        except Exception as e:
+            print(f"Warning: Could not enable mixed precision: {e}")
+
     pipeline_opts = list(FLAGS.pipeline_options)
 
     if FLAGS.max_workers is not None:
@@ -190,6 +211,7 @@ def run():
         chunk_secs=FLAGS.chunk_secs,
         center=FLAGS.center,
         viterbi=FLAGS.viterbi,
+        crepe_model=FLAGS.crepe_model,
         pipeline_options=pipeline_opts,
         progress_callback=update_progress,
     )
