@@ -1,0 +1,11 @@
+name: ddsp-gpu
+channels:
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - cuda-toolkit=12.2.2
+  - cudnn=8.9.7.29
+  - nvidia/label/cuda-12.2.2::cuda-libraries-dev=12.2.2
+prefix: /home/jovyan/.uconda/envs/ddsp-gpu

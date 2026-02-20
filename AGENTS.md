@@ -4,12 +4,17 @@ AI agent guidelines for the DDSP (Differentiable Digital Signal Processing) code
 
 ## Environment Setup
 
-**Python**: 3.11-3.12 required (TensorFlow 2.15.1 + TFP 0.22.0)
+**Python**: 3.11-3.12 required (TensorFlow 2.15.x + TFP 0.22.0)
 
 **Installation**:
 ```bash
-uv sync --no-build-isolation  # required for legacy packages like crepe
+# Using uv (recommended for CPU)
+uv sync --no-build-isolation
 source .venv/bin/activate
+
+# Using conda (for GPU support)
+conda env create -f environment_gpu.yml
+conda activate ddsp-gpu
 ```
 
 ## Build/Lint/Test Commands
@@ -19,8 +24,8 @@ source .venv/bin/activate
 PYTHONPATH=$(pwd):$PYTHONPATH pytest                      # all tests
 PYTHONPATH=$(pwd):$PYTHONPATH pytest ddsp/core_test.py    # single file
 PYTHONPATH=$(pwd):$PYTHONPATH pytest ddsp/core_test.py::test_midi_to_hz_is_accurate  # single test
-PYTHONPATH=$(pwd):$PYTHONPATH pytest -v --tb=short        # verbose (avoids absl.flags conflict)
 PYTHONPATH=$(pwd):$PYTHONPATH pytest --cov=ddsp           # with coverage
+uv run pytest ddsp/core_test.py::test_midi_to_hz_is_accurate
 ```
 
 ### Linting
@@ -28,11 +33,27 @@ PYTHONPATH=$(pwd):$PYTHONPATH pytest --cov=ddsp           # with coverage
 pylint ddsp              # entire codebase
 pylint ddsp/core.py      # specific file
 pylint --errors-only ddsp  # errors only
+uv run pylint ddsp
 ```
 
 ### Type Checking
 ```bash
 mypy ddsp
+uv run mypy ddsp
+```
+
+### Development Dependencies
+```bash
+uv sync --extra test            # with test dependencies
+uv sync --extra data_preparation  # with data prep dependencies
+uv sync --extra gcp             # with GCP dependencies
+```
+
+### Console Scripts
+```bash
+pip install -e .                # installs console entry points
+ddsp_run --help
+ddsp_prepare_tfrecord --help
 ```
 
 ## Code Style Guidelines
@@ -124,28 +145,13 @@ ddsp/
 ## Known Issues
 
 1. **absl.flags conflict**: `prepare_tfrecord_lib_test.py` fails with pytest verbose flags. Run without `-v` or use `--tb=short`.
+2. **crepe build**: Requires `setuptools>=60.0.0,<70.0.0` and `--no-build-isolation` for pip install.
 
 ## Code to Avoid
 
 - `absl.flags` (conflicts with pytest)
 - `pkg_resources` (removed in setuptools 70+)
 - Deprecated TensorFlow APIs
-
-## Key Dependencies
-
-- TensorFlow 2.15.1, NumPy 1.26.4, SciPy 1.10.1
-- librosa 0.10.0, gin-config 0.5.0, TensorFlow Probability 0.22.0
-- apache-beam 2.59.0, pydub, tqdm, crepe 0.0.16
-- pylint 2.x (required for apache-beam compatibility)
-- setuptools>=60.0.0,<70.0.0 (required for crepe)
-
-## Tensor Operations
-
-- Use `core.tf_float32()` to ensure float32 conversion
-- Handle batch dimensions explicitly: check `len(shape)` before operations
-- Use `tf.squeeze()`/`tf.expand_dims()` for shape manipulation
-- Prefer `tf.signal.stft` over `librosa.stft` for differentiable ops
-- Cast numpy arrays to tensors before TF operations: `tf.constant(arr, dtype=tf.float32)`
 
 ## Audio Conventions
 
@@ -154,10 +160,3 @@ ddsp/
 - Overlap: 0.75 (75%) standard for STFT
 - MIDI range: 0-127, f0_hz: 0-20000 Hz
 - Audio tensors: `[batch, samples]` or `[samples]` (squeeze channel dim)
-
-## Git Workflow
-
-- Create feature branches for changes
-- Run linting and tests before committing
-- Use conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`
-- Push to remote regularly for backup
