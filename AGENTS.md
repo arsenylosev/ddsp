@@ -1,101 +1,111 @@
 # AGENTS.md - DDSP Development Guide
 
-AI agent guidelines for the DDSP (Differentiable Digital Signal Processing) codebase. Apache-2.0 licensed.
+AI agent guidelines for the DDSP (Differentiable Digital Signal Processing) codebase.
 
 ## Environment Setup
 
-**Python**: 3.11-3.12 required (TensorFlow 2.15.x + TFP 0.22.0)
+**Python**: 3.10 (TensorFlow 2.15 requires Python 3.10, tested with 3.10.19)
 
 **Installation**:
 ```bash
-# Using uv (recommended for CPU)
-uv sync --no-build-isolation
-source .venv/bin/activate
+conda create -n ddsp_env python=3.10.19 -y
+conda activate ddsp_env
+conda install -c conda-forge cudnn=8.9 cuda-toolkit=12.5 -y
+pip install tensorflow==2.15.0 tensorflow-probability==0.22.0
+pip install -e .[test,data_preparation]
+```
 
-# Using conda (for GPU support)
-conda env create -f environment_gpu.yml
-conda activate ddsp-gpu
+**Console Scripts**: `ddsp_export`, `ddsp_run`, `ddsp_prepare_tfrecord`, `ddsp_generate_synthetic_dataset`
+
+**Required Workaround for Protobuf**: For TFDS + protobuf 6.x incompatibility with note_seq:
+```bash
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+```
+
+**Important**: Always run ddsp commands with the protobuf workaround:
+```bash
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python && ddsp_run --mode=train ...
 ```
 
 ## Build/Lint/Test Commands
 
 ### Testing
 ```bash
-PYTHONPATH=$(pwd):$PYTHONPATH pytest                      # all tests
-PYTHONPATH=$(pwd):$PYTHONPATH pytest ddsp/core_test.py    # single file
-PYTHONPATH=$(pwd):$PYTHONPATH pytest ddsp/core_test.py::test_midi_to_hz_is_accurate  # single test
-PYTHONPATH=$(pwd):$PYTHONPATH pytest --cov=ddsp           # with coverage
-uv run pytest ddsp/core_test.py::test_midi_to_hz_is_accurate
+pytest                                  # all tests
+pytest ddsp/core_test.py               # single file
+pytest ddsp/core_test.py::test_midi_to_hz_is_accurate  # single test
+PYTHONPATH=$(pwd):$PYTHONPATH pytest ddsp/spectral_ops_test.py
+pytest -k "test_name" ddsp/            # filter tests by name pattern
+pytest -x ddsp/                         # stop on first failure
+pytest --tb=short ddsp/                 # shorter traceback
 ```
 
 ### Linting
 ```bash
-pylint ddsp              # entire codebase
-pylint ddsp/core.py      # specific file
-pylint --errors-only ddsp  # errors only
-uv run pylint ddsp
+pylint ddsp                            # entire codebase
+pylint --errors-only ddsp              # errors only
+pylint ddsp/core.py                    # single file
 ```
 
 ### Type Checking
 ```bash
 mypy ddsp
-uv run mypy ddsp
+mypy ddsp/core.py --ignore-missing-imports
 ```
 
-### Development Dependencies
+### Running ddsp_run
 ```bash
-uv sync --extra test            # with test dependencies
-uv sync --extra data_preparation  # with data prep dependencies
-uv sync --extra gcp             # with GCP dependencies
-```
-
-### Console Scripts
-```bash
-pip install -e .                # installs console entry points
-ddsp_run --help
-ddsp_prepare_tfrecord --help
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python && ddsp_run \
+  --mode=train \
+  --save_dir=/path/to/experiments/test \
+  --gin_file=ddsp/training/gin/models/solo_instrument.gin \
+  --gin_file=ddsp/training/gin/datasets/tfrecord.gin \
+  --gin_param="TFRecordProvider.file_pattern='/absolute/path/to/*.tfrecord*'"
 ```
 
 ## Code Style Guidelines
 
 ### Copyright Header
-Every file must include the Apache-2.0 license header:
 ```python
-# Copyright 2026 The DDSP Authors.
+# Copyright 2024 The DDSP Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 ```
 
 ### Imports
-Order: standard library → third-party → local. Group by type.
+Order: standard library → third-party → local. Group by type with blank lines.
 ```python
 from collections import abc
+import copy
 from typing import Any, Dict, Optional, Sequence, Text, TypeVar
 
 import gin
 import numpy as np
+from scipy import fftpack
 import tensorflow.compat.v2 as tf
 
 from ddsp import core
 ```
 - Use `import tensorflow.compat.v2 as tf`
-- Alias Keras layers: `tfkl = tf.keras.layers`
-- Alias TFP distributions: `tfd = tfp.distributions`
+- Alias: `tfkl = tf.keras.layers`, `tfd = tfp.distributions`
 - Avoid `from X import *`
 
-### Type Hints
-Use hints for function signatures. Common types: `Dict`, `List`, `Optional`, `Text`, `Sequence`, `Any`. Define TypeVars for generics.
-```python
-TensorDict = Dict[Text, tf.Tensor]
-Number = TypeVar('Number', int, float, np.ndarray, tf.Tensor)
-```
+### Formatting (from pylintrc)
+- **Line length**: 80 characters max
+- **Indentation**: 2 spaces (not 4)
+- **Indent after paren**: 4 spaces
 
 ### Naming Conventions
 - Variables/functions: `snake_case`
 - Classes: `PascalCase`
 - Constants: `UPPER_SNAKE_CASE`
 - Private members: `_private_method`
-- Descriptive names: `n_samples`, `f0_hz`, `audio`
+
+### Type Hints
+```python
+TensorDict = Dict[Text, tf.Tensor]
+Number = TypeVar('Number', int, float, np.ndarray, tf.Tensor)
+```
 
 ### Function Design
 - Google-style docstrings (purpose, args, returns)
@@ -103,7 +113,6 @@ Number = TypeVar('Number', int, float, np.ndarray, tf.Tensor)
 - Return early for error cases
 
 ### Error Handling
-Use explicit exceptions with informative messages:
 ```python
 raise ValueError(f'Keys: {keys} must be the same length as {x}')
 raise NotImplementedError  # for abstract methods
@@ -117,46 +126,49 @@ raise NotImplementedError  # for abstract methods
 - Set `autocast=False` in custom layers
 
 ### Configuration with Gin
-- Use `@gin.register` for functions/classes used in DAG configs
+- Use `@gin.register` for functions/classes in DAG configs
 - Use `@gin.configurable` for globally configurable functions
 - Keep core library agnostic to gin where possible
+- Gin files located in `ddsp/training/gin/`
 
 ### Test Files
-- Naming: `*_test.py` or `test_*.py`
-- Use `unittest.TestCase` or `tf.test.TestCase`
-- Use `@parameterized.named_parameters` for parameterized tests
+- Naming: `*_test.py`
+- Use `from absl.testing import parameterized`
+- Base classes: `parameterized.TestCase, tf.test.TestCase`
 - Tests in same directory as implementation
-- Mock external dependencies
 
-## File Organization
+## Project Structure
 
 ```
 ddsp/
-  core.py         # Core DSP functions
-  processors.py   # Base Processor classes
-  synths.py       # Synthesizer processors
-  effects.py      # Effect processors
-  losses.py       # Loss functions
-  spectral_ops.py # Spectral operations
-  dags.py         # DAG utilities
-  training/       # Training infrastructure
+  core.py              # Core DSP functions (utilities, shifts, filters)
+  spectral_ops.py      # STFT, mel, mag spectrograms
+  processors.py        # Synthesizer processors (additive, spectral, noise)
+  training/
+    ddsp_run.py        # Main training entry point
+    gin/               # Gin configuration files
+    models/            # Model definitions
+    decoders/          # Decoder architectures
 ```
 
-## Known Issues
-
-1. **absl.flags conflict**: `prepare_tfrecord_lib_test.py` fails with pytest verbose flags. Run without `-v` or use `--tb=short`.
-2. **crepe build**: Requires `setuptools>=60.0.0,<70.0.0` and `--no-build-isolation` for pip install.
-
-## Code to Avoid
-
-- `absl.flags` (conflicts with pytest)
-- `pkg_resources` (removed in setuptools 70+)
-- Deprecated TensorFlow APIs
-
 ## Audio Conventions
-
-- Sample rate: 16000 Hz (default for CREPE pitch detection)
-- Frame sizes: 2048, 4096, or 8192 (power of 2)
+- Sample rate: 16000 Hz (default)
+- Frame sizes: 2048, 4096, 8192 (power of 2)
 - Overlap: 0.75 (75%) standard for STFT
 - MIDI range: 0-127, f0_hz: 0-20000 Hz
 - Audio tensors: `[batch, samples]` or `[samples]` (squeeze channel dim)
+
+## Known Issues
+1. **absl.flags conflict**: `prepare_tfrecord_lib_test.py` fails with pytest `-v`. Run without `-v`.
+2. **NumPy version**: Use `numpy<2` (tested with 1.26.4)
+3. **CREPE build**: Requires `setuptools>=60.0.0,<70.0.0` and `--no-build-isolation`.
+4. **Protobuf + note_seq**: Set `PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python` before running ddsp commands.
+5. **TensorFlow/Keras version compatibility**: DDSP requires TensorFlow 2.15.0 and Keras 2.15.0. Newer versions (2.20+) are incompatible due to Keras 3.x API changes.
+6. **TFRecord file path**: Use absolute paths for TFRecord files, e.g., `/path/to/tfrecords/*.tfrecord*`
+7. **Keras 3.x incompatibility**: Standalone Keras 3.x breaks tf.keras layers. Use TF 2.15.0 bundled Keras.
+
+## Code to Avoid
+- `absl.flags` (conflicts with pytest)
+- `pkg_resources` (removed in setuptools 70+, use `os.path` instead)
+- Deprecated TensorFlow APIs
+- `from X import *` imports

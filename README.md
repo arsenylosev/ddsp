@@ -106,13 +106,195 @@ Besides the tutorials, each module has its own test file that can be helpful for
 
 <a id='Installation'></a>
 # Installation
-Requires tensorflow version >= 2.1.0, but the core library runs in either eager or graph mode.
+
+This section provides complete, step-by-step instructions for setting up a DDSP development environment with GPU support. The core library runs in either eager or graph mode and requires TensorFlow 2.20+.
+
+## Prerequisites
+
+| Item | Minimum Version | Notes |
+|------|-----------------|-------|
+| Operating System | Ubuntu 20.04/22.04 (or any recent Linux) | Tested with Ubuntu; GPU driver support required |
+| GPU Driver | NVIDIA driver ≥ 525 | Must match CUDA version |
+| Conda | Miniconda or Anaconda | For reproducible environment creation |
+| Git | ≥ 2.30 | To clone the repository |
+| Build Tools | build-essential, cmake | For optional C/C++ extensions |
+
+## Step 1: Install Miniconda (if needed)
 
 ```bash
-sudo apt-get install libsndfile-dev
-pip install --upgrade pip
-pip install --upgrade ddsp
+# Download the installer
+curl -LO https://repo.anaconda.com/miniconda/Miniconda3-py310_23.11.0-0-Linux-x86_64.sh
+
+# Verify checksum
+sha256sum Miniconda3-py310_23.11.0-0-Linux-x86_64.sh
+
+# Run installer
+bash Miniconda3-py310_23.11.0-0-Linux-x86_64.sh
+
+# Follow prompts - accept license, install to $HOME/miniconda3, and allow conda to initialize your shell
 ```
+
+Restart your shell after installation: `source ~/.bashrc`
+
+## Step 2: Create a Conda Environment
+
+```bash
+# Create environment named ddsp_env with Python 3.10.19 (tested version)
+conda create -n ddsp_env python=3.10.19 -y
+
+# Activate it
+conda activate ddsp_env
+```
+
+## Step 3: Install CUDA Toolkit & cuDNN
+
+DDSP uses TensorFlow 2.20, which is compiled against CUDA 12.5 and cuDNN 8.9.
+
+```bash
+# Install CUDA 12.5 and cuDNN 8.9 via conda-forge
+conda install -c conda-forge cudnn=8.9 cuda-toolkit=12.5 -y
+```
+
+**Note:** Your host GPU driver must be ≥ 525. If you see "CUDA driver version is insufficient", update your NVIDIA driver first.
+
+## Step 4: Install DDSP and Dependencies
+
+```bash
+# Clone the repository
+git clone https://github.com/magenta/ddsp.git
+cd ddsp
+
+# Install the package with test and data_preparation extras
+pip install -e .[test,data_preparation]
+```
+
+## Step 5: Apply Protobuf Compatibility Workaround
+
+TensorFlow Datasets bundles pre-compiled protobuf files that are incompatible with protobuf 6.x. The simplest fix is to force the pure-Python implementation:
+
+```bash
+# Add to your shell session (or ~/.bashrc for persistence)
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+```
+
+**Do not downgrade protobuf** - this would break TensorFlow 2.20.
+
+## Step 6: Verify the Installation
+
+### Check TensorFlow GPU Access
+
+```bash
+python - <<'PY'
+import tensorflow as tf
+print('TensorFlow version:', tf.__version__)
+print('GPU available:', tf.config.list_physical_devices('GPU'))
+PY
+```
+
+Expected output:
+```
+TensorFlow version: 2.20.0
+GPU available: [PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')]
+```
+
+### Run a Quick Test
+
+```bash
+# From the repository root
+PYTHONPATH=$(pwd):$PYTHONPATH pytest ddsp/core_test.py::UtilitiesTest::test_midi_to_hz_is_accurate -q
+```
+
+You should see `1 passed`.
+
+## Quick Install Script (Copy-Paste)
+
+```bash
+# 1. Install Miniconda (skip if already installed)
+curl -LO https://repo.anaconda.com/miniconda/Miniconda3-py310_23.11.0-0-Linux-x86_64.sh
+bash Miniconda3-py310_23.11.0-0-Linux-x86_64.sh
+source ~/.bashrc
+
+# 2. Create & activate environment
+conda create -n ddsp_env python=3.10.19 -y
+conda activate ddsp_env
+
+# 3. Install CUDA & cuDNN
+conda install -c conda-forge cudnn=8.9 cuda-toolkit=12.5 -y
+
+# 4. Clone repo & install Python deps
+git clone https://github.com/magenta/ddsp.git
+cd ddsp
+pip install -e .[test,data_preparation]
+
+# 5. Protobuf workaround
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+
+# 6. Verify GPU
+python - <<'PY'
+import tensorflow as tf
+print('TF version:', tf.__version__)
+print('GPUs:', tf.config.list_physical_devices('GPU'))
+PY
+
+# 7. Run quick test
+PYTHONPATH=$(pwd):$PYTHONPATH pytest ddsp/core_test.py::UtilitiesTest::test_midi_to_hz_is_accurate -q
+```
+
+## Alternative: uv Setup
+
+For users who prefer `uv` over conda:
+
+```bash
+# Create venv with Python 3.10
+python3.10 -m venv .venv
+source .venv/bin/activate
+
+# Install uv
+pip install uv
+
+# Install CUDA toolkit via conda (required for GPU support)
+conda create -n ddsp_cuda python=3.10.19 -y
+conda activate ddsp_cuda
+conda install -c conda-forge cudnn=8.9 cuda-toolkit=12.5 -y
+
+# Return to venv and install DDSP
+source .venv/bin/activate
+uv pip install -e .[test,data_preparation]
+
+# Protobuf workaround
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+
+# Verify GPU (run from venv)
+python - <<'PY'
+import tensorflow as tf
+print('TF version:', tf.__version__)
+print('GPUs:', tf.config.list_physical_devices('GPU'))
+PY
+```
+
+**Note:** uv does not handle CUDA toolkit installation. You must install CUDA via conda first, as shown above.
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| `TypeError: Descriptors cannot be created directly` | Ensure `export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python` is set |
+| GPU not found | Install NVIDIA driver ≥ 525, verify with `nvidia-smi` |
+| `numpy>=2` error | Pin NumPy: `pip install "numpy<2"` |
+| `absl.flags` conflict with pytest | Run `pytest` without `-v` flag |
+| CREPE build fails | Use `pip install crepe==0.0.12 --no-build-isolation` |
+
+## Requirements Summary
+
+| Component | Version |
+|-----------|---------|
+| Python | 3.10.19 (tested) |
+| TensorFlow | 2.20.0 |
+| TensorFlow Probability | 0.24.0 |
+| CUDA | 12.5 |
+| cuDNN | 8.9 |
+| NumPy | < 2 (1.26.4 tested) |
+| libsndfile | For audio file I/O |
 
 
 <a id='Overview'></a>

@@ -94,7 +94,7 @@ flags.DEFINE_boolean(
 flags.DEFINE_boolean("viterbi", True, "Use viterbi decoding of pitch.")
 flags.DEFINE_list(
     "pipeline_options",
-    "--runner=DirectRunner",
+    "--runner=DirectRunner,--direct_running_mode=in_memory",
     "A comma-separated list of command line arguments to be used as options "
     "for the Beam Pipeline.",
 )
@@ -124,6 +124,16 @@ flags.DEFINE_integer(
     "cache_size",
     1000,
     "Number of audio files to cache in memory for faster processing.",
+)
+flags.DEFINE_string(
+    "direct_running_mode",
+    "in_memory",
+    "DirectRunner execution mode: in_memory, multi_threading, multi_processing. Use in_memory for large datasets.",
+)
+flags.DEFINE_integer(
+    "wait_until_finish_duration",
+    0,
+    "Maximum time in milliseconds to wait for pipeline to finish. 0 means wait forever.",
 )
 
 
@@ -189,7 +199,20 @@ def run():
     pipeline_opts = list(FLAGS.pipeline_options)
 
     if FLAGS.max_workers is not None:
-        pipeline_opts.append(f"--max_num_workers={FLAGS.max_workers}")
+        max_workers_set = any("--max_num_workers" in opt for opt in pipeline_opts)
+        if not max_workers_set:
+            pipeline_opts.append(f"--max_num_workers={FLAGS.max_workers}")
+
+    mode_set = any("--direct_running_mode" in opt for opt in pipeline_opts)
+    if not mode_set and FLAGS.direct_running_mode:
+        pipeline_opts.append(f"--direct_running_mode={FLAGS.direct_running_mode}")
+
+    if FLAGS.wait_until_finish_duration > 0:
+        wait_set = any("--wait_until_finish_duration" in opt for opt in pipeline_opts)
+        if not wait_set:
+            pipeline_opts.append(
+                f"--wait_until_finish_duration={FLAGS.wait_until_finish_duration}"
+            )
 
     progress_tracker = None
     if FLAGS.progress_bar and total_files > 0:
@@ -214,6 +237,7 @@ def run():
         crepe_model=FLAGS.crepe_model,
         pipeline_options=pipeline_opts,
         progress_callback=update_progress,
+        direct_running_mode=FLAGS.direct_running_mode,
     )
 
     if progress_tracker:

@@ -272,6 +272,7 @@ def prepare_tfrecord(
     crepe_model="tiny",
     pipeline_options=(),
     progress_callback=None,
+    direct_running_mode=None,
 ):
     """Prepares a TFRecord for use in training, evaluation, and prediction.
 
@@ -298,6 +299,12 @@ def prepare_tfrecord(
       viterbi: Use viterbi decoding of pitch.
       crepe_model: CREPE model size: tiny, small, medium, large, full.
         Smaller models are faster but less accurate.
+      pipeline_options: An iterable of command line arguments to be used as
+        options for the Beam Pipeline.
+      progress_callback: Optional callback function to call after each audio
+        file is processed. Useful for progress bar updates.
+      direct_running_mode: DirectRunner execution mode: in_memory, multi_threading,
+        or multi_processing. Use in_memory for large datasets to avoid gRPC timeouts.
       pipeline_options: An iterable of command line arguments to be used as
         options for the Beam Pipeline.
       progress_callback: Optional callback function to call after each audio
@@ -333,7 +340,14 @@ def prepare_tfrecord(
         )
 
     # Start the pipeline.
-    pipeline_options = beam.options.pipeline_options.PipelineOptions(pipeline_options)
+    options_list = list(pipeline_options)
+
+    if direct_running_mode is not None:
+        mode_set = any("--direct_running_mode" in opt for opt in options_list)
+        if not mode_set:
+            options_list.append(f"--direct_running_mode={direct_running_mode}")
+
+    pipeline_options = beam.options.pipeline_options.PipelineOptions(options_list)
     with beam.Pipeline(options=pipeline_options) as pipeline:
         examples = (
             pipeline
