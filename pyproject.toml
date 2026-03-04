@@ -1,0 +1,134 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ddsp"
+dynamic = ["version"]
+description = "Differentiable Digital Signal Processing"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Google Inc.", email = "no-reply@google.com"}
+]
+keywords = ["audio", "dsp", "signalprocessing", "machinelearning", "music"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.11"
+dependencies = [
+    # Core ML
+    "tensorflow>=2.15.0,<2.16",
+    "tensorflow-probability>=0.22.0,<0.23",
+    "tensorflow-datasets>=4.9",
+    # Audio/Signal Processing
+    "librosa>=0.10",
+    "crepe<=0.0.12",
+    "pydub<=0.25.1",
+    "mir_eval<=0.7",
+    "note_seq<0.0.4",
+    # Numerical
+    "numpy<2",
+    "scipy>=1.10.1",
+    # Configuration
+    "gin-config>=0.3.0",
+    "apache-beam",
+    # Utilities
+    "absl-py",
+    "cloudml-hypertune<=0.1.0.dev6",
+    "dill<=0.3.4",
+    "future",
+    "google-cloud-storage",
+    "hmmlearn<=0.2.7",
+    "six",
+    "tensorflowjs<3.19",
+    "tflite_support<=0.1",
+]
+
+[project.optional-dependencies]
+gcp = [
+    "gevent",
+    "google-api-python-client",
+    "google-compute-engine",
+    "oauth2client",
+]
+data_preparation = [
+    "apache_beam",
+    "pyparsing<=2.4.7",
+]
+test = [
+    "pytest>=8.0",
+    "ruff>=0.3.0",
+]
+
+[project.scripts]
+ddsp_export = "ddsp.training.ddsp_export:console_entry_point"
+ddsp_run = "ddsp.training.ddsp_run:console_entry_point"
+ddsp_prepare_tfrecord = "ddsp.training.data_preparation.ddsp_prepare_tfrecord:console_entry_point"
+ddsp_generate_synthetic_dataset = "ddsp.training.data_preparation.ddsp_generate_synthetic_dataset:console_entry_point"
+ddsp_ai_platform = "ddsp.training.docker.ddsp_ai_platform:console_entry_point"
+
+[project.urls]
+Homepage = "https://github.com/magenta/ddsp"
+Repository = "https://github.com/magenta/ddsp"
+Documentation = "https://github.com/magenta/ddsp"
+
+[tool.hatch.version]
+path = "ddsp/version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ddsp"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"ddsp/training/gin" = "ddsp/training/gin"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 80
+indent-width = 2
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E111",  # Indentation is not a multiple of four (we use 2)
+    "E114",  # Indentation is not a multiple of four (comment)
+    "E501",  # Line too long (handled by formatter)
+    "UP015", # Unnecessary open mode parameters (may be intentional)
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "auto"
+skip-magic-trailing-comma = false
+
+[tool.pytest.ini_options]
+testpaths = ["ddsp"]
+python_files = ["*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--tb=short -v"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore::FutureWarning",
+]

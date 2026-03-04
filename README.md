@@ -139,8 +139,8 @@ Restart your shell after installation: `source ~/.bashrc`
 ## Step 2: Create a Conda Environment
 
 ```bash
-# Create environment named ddsp_env with Python 3.10.19 (tested version)
-conda create -n ddsp_env python=3.10.19 -y
+# Create environment named ddsp_env with Python 3.11 (recommended version)
+conda create -n ddsp_env python=3.11 -y
 
 # Activate it
 conda activate ddsp_env
@@ -215,7 +215,7 @@ bash Miniconda3-py310_23.11.0-0-Linux-x86_64.sh
 source ~/.bashrc
 
 # 2. Create & activate environment
-conda create -n ddsp_env python=3.10.19 -y
+conda create -n ddsp_env python=3.11 -y
 conda activate ddsp_env
 
 # 3. Install CUDA & cuDNN
@@ -240,39 +240,49 @@ PY
 PYTHONPATH=$(pwd):$PYTHONPATH pytest ddsp/core_test.py::UtilitiesTest::test_midi_to_hz_is_accurate -q
 ```
 
-## Alternative: uv Setup
+## Recommended: uv Setup (10-100x faster)
 
-For users who prefer `uv` over conda:
+For the best development experience, use `uv` instead of conda/pip:
 
 ```bash
-# Create venv with Python 3.10
-python3.10 -m venv .venv
-source .venv/bin/activate
-
 # Install uv
-pip install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install CUDA toolkit via conda (required for GPU support)
-conda create -n ddsp_cuda python=3.10.19 -y
+# Create virtual environment with Python 3.11
+uv venv --python 3.11
+source .venv/bin/activate  # Linux/Mac
+# .venv\Scripts\activate   # Windows
+
+# Install DDSP with all development dependencies
+uv sync --extra data_preparation --extra test
+
+# Or install in editable mode
+uv pip install -e ".[data_preparation,test]"
+
+# Protobuf workaround (required)
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+
+# Verify installation
+uv run python -c "import ddsp; print('DDSP version:', ddsp.__version__)"
+```
+
+**For GPU support with uv:**
+uv doesn't install CUDA toolkit, so you need to install it separately:
+
+```bash
+# Option 1: Use system CUDA (if already installed)
+# Ensure CUDA 12.5+ and cuDNN 8.9+ are in your PATH
+
+# Option 2: Use conda just for CUDA
+conda create -n ddsp_cuda -y
 conda activate ddsp_cuda
 conda install -c conda-forge cudnn=8.9 cuda-toolkit=12.5 -y
 
-# Return to venv and install DDSP
+# Then use uv for Python packages
 source .venv/bin/activate
-uv pip install -e .[test,data_preparation]
-
-# Protobuf workaround
-export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-
-# Verify GPU (run from venv)
-python - <<'PY'
-import tensorflow as tf
-print('TF version:', tf.__version__)
-print('GPUs:', tf.config.list_physical_devices('GPU'))
-PY
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
+uv sync --extra data_preparation --extra test
 ```
-
-**Note:** uv does not handle CUDA toolkit installation. You must install CUDA via conda first, as shown above.
 
 ## Troubleshooting
 
@@ -288,9 +298,9 @@ PY
 
 | Component | Version |
 |-----------|---------|
-| Python | 3.10.19 (tested) |
-| TensorFlow | 2.20.0 |
-| TensorFlow Probability | 0.24.0 |
+| Python | 3.11 (recommended) |
+| TensorFlow | 2.15.0 |
+| TensorFlow Probability | 0.22.0 |
 | CUDA | 12.5 |
 | cuDNN | 8.9 |
 | NumPy | < 2 (1.26.4 tested) |

@@ -1,44 +1,63 @@
 name: build
 
-on: [push]
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.8'
-    - name: Install dependencies
-    # TODO(jesseengel): Remove `legacy-resolver` when pip dependency resolution
-    # is no longer broken. Currently stalls (backtracking), only on GitHub, not
-    # locally.
-      run: |
-        sudo apt update
-        sudo apt-get -y install ffmpeg
-        pip install -U pip
-        pip install -e .[data_preparation,test] --use-deprecated=legacy-resolver
-    - name: Test with pytest
-      run: pytest
-    - name: Lint with pylint
-      run: pylint ddsp
-    # The below step just reports the success or failure of tests as a "commit status".
-    # This is needed for copybara integration.
-    - name: Report success or failure as github status
-      if: always()
-      shell: bash
-      run: |
-        status="${{ job.status }}"
-        lowercase_status=$(echo $status | tr '[:upper:]' '[:lower:]')
-        curl -sS --request POST \
-        --url https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
-        --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-        --header 'content-type: application/json' \
-        --data '{
-            "state": "'$lowercase_status'",
-            "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-            "description": "'$status'",
-            "context": "github-actions/build"
-            }'
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.4.x"
+          enable-cache: true
+          cache-dependency-glob: "**/pyproject.toml"
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg libsndfile1
+      
+      - name: Install dependencies
+        run: |
+          uv sync --extra data_preparation --extra test
+      
+      - name: Check formatting
+        run: uv run ruff format --check ddsp
+      
+      - name: Lint with ruff
+        run: uv run ruff check ddsp
+      
+      - name: Test with pytest
+        run: uv run pytest --tb=short
+        env:
+          PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
+      
+      - name: Report success or failure as github status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ job.status }}'.toLowerCase();
+            github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: status,
+              target_url: `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`,
+              context: 'github-actions/build',
+              description: status === 'success' ? 'All checks passed' : 'Checks failed'
+            });
