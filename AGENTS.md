@@ -23,6 +23,16 @@ uv sync --extra data_preparation --extra test
 uv pip install -e ".[data_preparation,test]"
 ```
 
+**GPU Support**: To enable GPU support, you need CUDA libraries. Use the provided activation script:
+```bash
+# This automatically sets up CUDA libraries from conda and protobuf workaround
+source ./activate_gpu.sh
+
+# Or manually set these environment variables:
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+export LD_LIBRARY_PATH=/home/jovyan/.uconda/envs/ddsp_env/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:$LD_LIBRARY_PATH
+```
+
 **Alternative: Installation with pip**:
 ```bash
 python -m venv .venv
@@ -215,12 +225,23 @@ ddsp/
 ## Known Issues
 1. **absl.flags conflict**: `prepare_tfrecord_lib_test.py` fails with pytest `-v`. Run without `-v`.
 2. **NumPy version**: Use `numpy<2` (tested with 1.26.4)
-3. **CREPE build**: Requires `setuptools>=60.0.0,<70.0.0` and `--no-build-isolation`.
-4. **Protobuf + note_seq**: Set `PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python` before running ddsp commands.
+3. **CREPE dependency removed**: crepe<=0.0.12 requires hmmlearn<0.3.0, which doesn't build on Python 3.11. The dependency has been removed from pyproject.toml. To use crepe features, install manually: `pip install crepe` after setting up the environment.
+4. **Protobuf + note_seq**: Set `PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python` before running ddsp commands:
+   ```bash
+   export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+   ddsp_run --mode=train ...
+   ```
 5. **TensorFlow/Keras version compatibility**: DDSP requires TensorFlow 2.15.0 and Keras 2.15.0. Newer versions (2.20+) are incompatible due to Keras 3.x API changes.
 6. **TFRecord file path**: Use absolute paths for TFRecord files, e.g., `/path/to/tfrecords/*.tfrecord*`
 7. **Keras 3.x incompatibility**: Standalone Keras 3.x breaks tf.keras layers. Use TF 2.15.0 bundled Keras.
 8. **Package Management**: Project uses `pyproject.toml` (PEP 621). Use `uv` for best experience or `pip install -e ".[extras]"` with pip.
+9. **GPU Support**: A special activation script is provided to enable GPU support. It sets up CUDA libraries from the existing conda `ddsp_env`:
+   ```bash
+   source ./activate_gpu.sh
+   # Or manually:
+   export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+   export LD_LIBRARY_PATH=/home/jovyan/.uconda/envs/ddsp_env/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:$LD_LIBRARY_PATH
+   ```
 
 ## Code to Avoid
 - `absl.flags` (conflicts with pytest)

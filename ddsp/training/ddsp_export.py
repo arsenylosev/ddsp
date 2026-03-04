@@ -48,70 +48,84 @@ import note_seq
 import tensorflow as tf
 from tensorflowjs.converters import converter
 
-# pylint: disable=pointless-string-statement
-
-from tflite_support import metadata as _metadata
-# pylint: enable=pointless-string-statement
 
 flags.DEFINE_string(
-    'name', '', 'Name of your model to use as folder and filename on export. '
-    'Defaults to "export/" and "model.tflite" if none is provided.')
+  'name',
+  '',
+  'Name of your model to use as folder and filename on export. '
+  'Defaults to "export/" and "model.tflite" if none is provided.',
+)
 flags.DEFINE_string(
-    'model_path', '', 'Path to checkpoint or SavedModel directory. If no '
-    'SavedModel is found, will search for latest checkpoint '
-    'use it to create a SavedModel. Can also provide direct '
-    'path to desired checkpoint. E.g. `/path/to/ckpt-[iter]`.')
+  'model_path',
+  '',
+  'Path to checkpoint or SavedModel directory. If no '
+  'SavedModel is found, will search for latest checkpoint '
+  'use it to create a SavedModel. Can also provide direct '
+  'path to desired checkpoint. E.g. `/path/to/ckpt-[iter]`.',
+)
 flags.DEFINE_string(
-    'save_dir', '', 'Optional directory in which to save converted checkpoint.'
-    'If none is provided, it will be FLAGS.model_path if it '
-    'contains a SavedModel, otherwise FLAGS.model_path/export.')
+  'save_dir',
+  '',
+  'Optional directory in which to save converted checkpoint.'
+  'If none is provided, it will be FLAGS.model_path if it '
+  'contains a SavedModel, otherwise FLAGS.model_path/export.',
+)
 
 # Specify model class.
 flags.DEFINE_enum(
-    'inference_model',
+  'inference_model',
+  'streaming_f0_pw',
+  [
+    'autoencoder',
     'streaming_f0_pw',
-    [
-        'autoencoder',
-        'streaming_f0_pw',
-        'vst_extract_features',
-        'vst_predict_controls',
-        'vst_stateless_predict_controls',
-        'vst_synthesize',
-        'vst_synthesize_harmonic',
-        'vst_synthesize_noise',
-    ],
-    'Specify the ddsp.training.inference model to use for '
-    'converting a checkpoint to a SavedModel. Names are '
-    'snake_case versions of class names.')
+    'vst_extract_features',
+    'vst_predict_controls',
+    'vst_stateless_predict_controls',
+    'vst_synthesize',
+    'vst_synthesize_harmonic',
+    'vst_synthesize_noise',
+  ],
+  'Specify the ddsp.training.inference model to use for '
+  'converting a checkpoint to a SavedModel. Names are '
+  'snake_case versions of class names.',
+)
 
 # Optional flags.
-flags.DEFINE_multi_string('gin_param', [],
-                          'Gin parameters for custom inference model kwargs.')
+flags.DEFINE_multi_string(
+  'gin_param', [], 'Gin parameters for custom inference model kwargs.'
+)
 flags.DEFINE_boolean('debug', False, 'DEBUG: Do not save the model')
 
 # Conversion formats.
-flags.DEFINE_boolean('tfjs', True,
-                     'Convert SavedModel to TFJS for deploying on the web.')
-flags.DEFINE_boolean('tflite', True,
-                     'Convert SavedModel to TFLite for embedded C++ apps.')
-flags.DEFINE_string('metadata_file', None,
-                    'Optional metadata file to pack into TFLite model.')
+flags.DEFINE_boolean(
+  'tfjs', True, 'Convert SavedModel to TFJS for deploying on the web.'
+)
+flags.DEFINE_boolean(
+  'tflite', True, 'Convert SavedModel to TFLite for embedded C++ apps.'
+)
+flags.DEFINE_string(
+  'metadata_file', None, 'Optional metadata file to pack into TFLite model.'
+)
 
 FLAGS = flags.FLAGS
 
 # Metadata.
 flags.DEFINE_boolean('metadata', True, 'Save metadata for model as a json.')
 flags.DEFINE_string(
-    'dataset_path', None,
-    'Only required if FLAGS.metadata=True. Path to TF Records containing '
-    'training examples. Only used if no binding to train.data_provider can '
-    'be found.')
+  'dataset_path',
+  None,
+  'Only required if FLAGS.metadata=True. Path to TF Records containing '
+  'training examples. Only used if no binding to train.data_provider can '
+  'be found.',
+)
 
 # Reverb Impulse Response.
-flags.DEFINE_boolean('reverb', True,
-                     'Save reverb impulse response as a wav file.')
-flags.DEFINE_integer('reverb_sample_rate', 44100,
-                     'If not None, also save resampled reverb ir.')
+flags.DEFINE_boolean(
+  'reverb', True, 'Save reverb impulse response as a wav file.'
+)
+flags.DEFINE_integer(
+  'reverb_sample_rate', 44100, 'If not None, also save resampled reverb ir.'
+)
 
 FLAGS = flags.FLAGS
 
@@ -139,8 +153,9 @@ def get_data_provider(dataset_path, model_path):
 
     except ValueError as e:
       raise Exception(
-          'Failed to parse dataset from gin. Either --dataset_path '
-          'or train.data_provider gin param must be set.') from e
+        'Failed to parse dataset from gin. Either --dataset_path '
+        'or train.data_provider gin param must be set.'
+      ) from e
 
 
 def get_metadata_dict(data_provider, model_path):
@@ -161,37 +176,27 @@ def get_metadata_dict(data_provider, model_path):
 
   # Compute stats.
   full_metadata = postprocessing.compute_dataset_statistics(
-      data_provider,
-      power_frame_size=frame_size,
-      power_frame_rate=frame_rate)
+    data_provider, power_frame_size=frame_size, power_frame_rate=frame_rate
+  )
 
   lite_metadata = {
-      'mean_min_pitch_note':
-          float(full_metadata['mean_min_pitch_note']),
-      'mean_max_pitch_note':
-          float(full_metadata['mean_max_pitch_note']),
-      'mean_min_pitch_note_hz':
-          float(ddsp.core.midi_to_hz(full_metadata['mean_min_pitch_note'])),
-      'mean_max_pitch_note_hz':
-          float(ddsp.core.midi_to_hz(full_metadata['mean_max_pitch_note'])),
-      'mean_min_power_note':
-          float(full_metadata['mean_min_power_note']),
-      'mean_max_power_note':
-          float(full_metadata['mean_max_power_note']),
-      'version':
-          ddsp.__version__,
-      'export_time':
-          datetime.datetime.now().isoformat(),
-      'num_harmonics':
-          output_splits['harmonic_distribution'],
-      'num_noise_amps':
-          output_splits['noise_magnitudes'],
-      'frame_rate':
-          frame_rate,
-      'frame_size':
-          frame_size,
-      'sample_rate':
-          sample_rate,
+    'mean_min_pitch_note': float(full_metadata['mean_min_pitch_note']),
+    'mean_max_pitch_note': float(full_metadata['mean_max_pitch_note']),
+    'mean_min_pitch_note_hz': float(
+      ddsp.core.midi_to_hz(full_metadata['mean_min_pitch_note'])
+    ),
+    'mean_max_pitch_note_hz': float(
+      ddsp.core.midi_to_hz(full_metadata['mean_max_pitch_note'])
+    ),
+    'mean_min_power_note': float(full_metadata['mean_min_power_note']),
+    'mean_max_power_note': float(full_metadata['mean_max_power_note']),
+    'version': ddsp.__version__,
+    'export_time': datetime.datetime.now().isoformat(),
+    'num_harmonics': output_splits['harmonic_distribution'],
+    'num_noise_amps': output_splits['noise_magnitudes'],
+    'frame_rate': frame_rate,
+    'frame_size': frame_size,
+    'sample_rate': sample_rate,
   }
   return lite_metadata
 
@@ -212,20 +217,20 @@ def get_inference_model(ckpt):
     gin.parse_config_files_and_bindings(None, FLAGS.gin_param)
 
   models = {
-      'autoencoder': inference.AutoencoderInference,
-      'vst_extract_features': inference.VSTExtractFeatures,
-      'vst_predict_controls': inference.VSTPredictControls,
-      'vst_stateless_predict_controls': inference.VSTStatelessPredictControls,
-      'vst_synthesize': inference.VSTSynthesize,
-      'vst_synthesize_harmonic': inference.VSTSynthesizeHarmonic,
-      'vst_synthesize_noise': inference.VSTSynthesizeNoise,
+    'autoencoder': inference.AutoencoderInference,
+    'vst_extract_features': inference.VSTExtractFeatures,
+    'vst_predict_controls': inference.VSTPredictControls,
+    'vst_stateless_predict_controls': inference.VSTStatelessPredictControls,
+    'vst_synthesize': inference.VSTSynthesize,
+    'vst_synthesize_harmonic': inference.VSTSynthesizeHarmonic,
+    'vst_synthesize_noise': inference.VSTSynthesizeNoise,
   }
   return models[FLAGS.inference_model](ckpt)
 
 
 def ckpt_to_saved_model(ckpt, save_dir):
   """Convert Checkpoint to SavedModel."""
-  print(f'\nConverting to SavedModel:' f'\nInput: {ckpt}\nOutput: {save_dir}\n')
+  print(f'\nConverting to SavedModel:\nInput: {ckpt}\nOutput: {save_dir}\n')
   model = get_inference_model(ckpt)
   print('Finshed Loading Model!')
   if not FLAGS.debug:
@@ -236,25 +241,29 @@ def ckpt_to_saved_model(ckpt, save_dir):
 def saved_model_to_tfjs(input_dir, save_dir):
   """Convert SavedModel to TFJS model."""
   print(f'\nConverting to TFJS:\nInput:{input_dir}\nOutput:{save_dir}\n')
-  converter.convert([
-      '--input_format=tf_saved_model', '--signature_name=serving_default',
-      '--control_flow_v2=True', '--skip_op_check', '--quantize_float16=True',
-      '--experiments=True', input_dir, save_dir
-  ])
+  converter.convert(
+    [
+      '--input_format=tf_saved_model',
+      '--signature_name=serving_default',
+      '--control_flow_v2=True',
+      '--skip_op_check',
+      '--quantize_float16=True',
+      '--experiments=True',
+      input_dir,
+      save_dir,
+    ]
+  )
   print('TFJS Conversion Success!')
 
 
-def saved_model_to_tflite(input_dir,
-                          save_dir,
-                          metadata_file=None,
-                          name=''):
+def saved_model_to_tflite(input_dir, save_dir, metadata_file=None, name=''):
   """Convert SavedModel to TFLite model."""
   print(f'\nConverting to TFLite:\nInput:{input_dir}\nOutput:{save_dir}\n')
   # Convert the model.
   tflite_converter = tf.lite.TFLiteConverter.from_saved_model(input_dir)
   tflite_converter.target_spec.supported_ops = [
-      tf.lite.OpsSet.TFLITE_BUILTINS,  # Enable TensorFlow Lite ops.
-      tf.lite.OpsSet.SELECT_TF_OPS,  # Enable extended TensorFlow ops.
+    tf.lite.OpsSet.TFLITE_BUILTINS,  # Enable TensorFlow Lite ops.
+    tf.lite.OpsSet.SELECT_TF_OPS,  # Enable extended TensorFlow ops.
   ]
   tflite_model = tflite_converter.convert()  # Byte string.
   # Save the model.
@@ -264,6 +273,8 @@ def saved_model_to_tflite(input_dir,
     f.write(tflite_model)
 
   if metadata_file is not None:
+    from tflite_support import metadata as _metadata
+
     populator = _metadata.MetadataPopulator.with_model_file(save_path)
     populator.load_associated_files([metadata_file])
     populator.populate()
@@ -310,7 +321,8 @@ def main(unused_argv):
 
   # Figure out what type the model path is.
   is_saved_model = tf.io.gfile.exists(
-      os.path.join(model_path, 'saved_model.pb'))
+    os.path.join(model_path, 'saved_model.pb')
+  )
   is_ckpt = not tf.io.gfile.isdir(model_path)
 
   # Infer save directory path.
@@ -357,10 +369,12 @@ def main(unused_argv):
   if FLAGS.tflite:
     tflite_dir = os.path.join(save_dir, 'tflite')
     ensure_exits(tflite_dir)
-    saved_model_to_tflite(save_dir,
-                          tflite_dir,
-                          metadata_path if FLAGS.metadata else '',
-                          name=FLAGS.name)
+    saved_model_to_tflite(
+      save_dir,
+      tflite_dir,
+      metadata_path if FLAGS.metadata else '',
+      name=FLAGS.name,
+    )
 
 
 def console_entry_point():
