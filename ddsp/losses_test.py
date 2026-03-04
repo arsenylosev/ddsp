@@ -18,20 +18,25 @@ from ddsp import core
 from ddsp import losses
 import numpy as np
 import tensorflow as tf
+import unittest
+
+try:
+  import crepe
+except ImportError:
+  crepe = None
 
 
 class LossGroupTest(tf.test.TestCase):
-
   def setUp(self):
     """Create some dummy input data for the chain."""
     super().setUp()
 
     # Create a network output dictionary.
     self.nn_outputs = {
-        'audio': tf.ones((3, 8000), dtype=tf.float32),
-        'audio_synth': tf.ones((3, 8000), dtype=tf.float32),
-        'magnitudes': tf.ones((3, 200, 2), dtype=tf.float32),
-        'f0_hz': 200 + tf.ones((3, 200, 1), dtype=tf.float32),
+      'audio': tf.ones((3, 8000), dtype=tf.float32),
+      'audio_synth': tf.ones((3, 8000), dtype=tf.float32),
+      'magnitudes': tf.ones((3, 200, 2), dtype=tf.float32),
+      'f0_hz': 200 + tf.ones((3, 200, 1), dtype=tf.float32),
     }
 
     # Create Processors.
@@ -40,22 +45,19 @@ class LossGroupTest(tf.test.TestCase):
 
     # Create DAG for testing.
     self.dag = [
-        (spectral_loss, ['audio', 'audio_synth']),
-        (crepe_loss, ['audio', 'audio_synth']),
+      (spectral_loss, ['audio', 'audio_synth']),
+      (crepe_loss, ['audio', 'audio_synth']),
     ]
-    self.expected_outputs = [
-        'spectral_loss',
-        'crepe_loss'
-    ]
+    self.expected_outputs = ['spectral_loss', 'crepe_loss']
 
   def _check_tensor_outputs(self, strings_to_check, outputs):
     for tensor_string in strings_to_check:
       tensor = core.nested_lookup(tensor_string, outputs)
       self.assertIsInstance(tensor, (np.ndarray, tf.Tensor))
 
+  @unittest.skipIf(crepe is None, 'crepe not installed')
   def test_dag_construction(self):
-    """Tests if DAG is built properly and runs.
-    """
+    """Tests if DAG is built properly and runs."""
     loss_group = losses.LossGroup(dag=self.dag)
     print('!!!!!!!!!!!', loss_group.dag, loss_group.loss_names, self.dag)
     loss_outputs = loss_group(self.nn_outputs)
@@ -64,16 +66,15 @@ class LossGroupTest(tf.test.TestCase):
 
 
 class SpectralLossTest(tf.test.TestCase):
-
   def test_output_shape_is_correct(self):
     """Test correct shape with all losses active."""
     loss_obj = losses.SpectralLoss(
-        mag_weight=1.0,
-        delta_time_weight=1.0,
-        delta_freq_weight=1.0,
-        cumsum_freq_weight=1.0,
-        logmag_weight=1.0,
-        loudness_weight=1.0,
+      mag_weight=1.0,
+      delta_time_weight=1.0,
+      delta_freq_weight=1.0,
+      cumsum_freq_weight=1.0,
+      logmag_weight=1.0,
+      loudness_weight=1.0,
     )
 
     input_audio = tf.ones((3, 8000), dtype=tf.float32)
@@ -85,10 +86,8 @@ class SpectralLossTest(tf.test.TestCase):
     self.assertTrue(np.isfinite(loss))
 
 
-
-
 class PretrainedCREPEEmbeddingLossTest(tf.test.TestCase):
-
+  @unittest.skipIf(crepe is None, 'crepe not installed')
   def test_output_shape_is_correct(self):
     loss_obj = losses.PretrainedCREPEEmbeddingLoss()
 

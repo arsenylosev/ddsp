@@ -292,7 +292,7 @@ uv sync --extra data_preparation --extra test
 | GPU not found | Install NVIDIA driver ≥ 525, verify with `nvidia-smi` |
 | `numpy>=2` error | Pin NumPy: `pip install "numpy<2"` |
 | `absl.flags` conflict with pytest | Run `pytest` without `-v` flag |
-| CREPE build fails | Use `pip install crepe==0.0.12 --no-build-isolation` |
+| CREPE build fails | Install with `pip install crepe>=0.0.16` (now compatible with Python 3.11) |
 
 ## Requirements Summary
 

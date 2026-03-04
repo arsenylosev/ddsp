@@ -15,13 +15,13 @@
 """Base module for the differentiable digital signal processing library."""
 
 # Module imports.
-from ddsp import core
-from ddsp import dags
-from ddsp import effects
-from ddsp import losses
-from ddsp import processors
-from ddsp import spectral_ops
-from ddsp import synths
+from ddsp import core as core
+from ddsp import dags as dags
+from ddsp import effects as effects
+from ddsp import losses as losses
+from ddsp import processors as processors
+from ddsp import spectral_ops as spectral_ops
+from ddsp import synths as synths
 
 # Version number.
-from ddsp.version import __version__
+from ddsp.version import __version__ as __version__

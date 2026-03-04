@@ -464,7 +464,7 @@ class PretrainedCREPE(tfkl.Layer):
     self.frame_length = 1024
 
   def build(self, unused_x_shape):
-    self.layer_names = [l.name for l in self._model.layers]
+    self.layer_names = [layer.name for layer in self._model.layers]
 
     if self._activation_layer not in self.layer_names:
       raise ValueError(
@@ -684,7 +684,10 @@ def wasserstein_distance(u_values, v_values, u_weights, v_weights, p=1.0):
   # Get the respective positions of the values of u and v among the values of
   # both distributions.
   batch_dims = len(u_values.shape) - 1
-  gather = lambda x, i: tf.gather(x, i, axis=-1, batch_dims=batch_dims)
+
+  def gather(x, i):
+    return tf.gather(x, i, axis=-1, batch_dims=batch_dims)
+
   u_cdf_indices = tf.searchsorted(
     gather(u_values, u_sorter), all_values[..., :-1], side='right'
   )

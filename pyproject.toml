@@ -29,7 +29,7 @@ dependencies = [
     "tensorflow-datasets>=4.9",
     # Audio/Signal Processing
     "librosa>=0.10",
-    # "crepe<=0.0.12",  # Removed - requires hmmlearn<0.3.0 which doesn't build on Python 3.11
+    "crepe>=0.0.16",
     "pydub<=0.25.1",
     "mir_eval<=0.7",
     "note_seq<0.0.4",

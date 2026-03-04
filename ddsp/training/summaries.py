@@ -42,7 +42,8 @@ def fig_summary(tag, fig, step):
   buffer = io.BytesIO()
   fig.savefig(buffer, format='png')
   image_summary = tf.compat.v1.Summary.Image(
-      encoded_image_string=buffer.getvalue())
+    encoded_image_string=buffer.getvalue()
+  )
   plt.close(fig)
 
   pb = tf.compat.v1.Summary()
@@ -67,7 +68,7 @@ def waveform_summary(audio, audio_gen, step, name=''):
 
     # Format and save plot to image
     name = name + '_' if name else ''
-    tag = f'waveform/{name}{prefix}_{i+1}'
+    tag = f'waveform/{name}{prefix}_{i + 1}'
     fig_summary(tag, fig, step)
 
   # Make plots at multiple lengths.
@@ -96,7 +97,9 @@ def _plt_spec(spec, ax, title):
 
 def spectrogram_summary(audio, audio_gen, step, name='', tag='spectrogram'):
   """Writes a summary of spectrograms for a batch of images."""
-  specgram = lambda a: ddsp.spectral_ops.compute_logmag(tf_float32(a), size=768)
+
+  def specgram(a):
+    return ddsp.spectral_ops.compute_logmag(tf_float32(a), size=768)
 
   # Batch spectrogram operations
   spectrograms = specgram(audio)
@@ -113,7 +116,7 @@ def spectrogram_summary(audio, audio_gen, step, name='', tag='spectrogram'):
     _plt_spec(spectrograms_gen[i], axs[1], 'synthesized')
 
     # Format and save plot to image
-    tag_i = f'{tag}/{name}{i+1}'
+    tag_i = f'{tag}/{name}{i + 1}'
     fig_summary(tag_i, fig, step)
 
 
@@ -124,7 +127,8 @@ def audio_summary(audio, step, sample_rate=16000, name='audio'):
   if len(audio.shape) == 2:
     audio = audio[:, :, tf.newaxis]
   tf.summary.audio(
-      name, audio, sample_rate, step, max_outputs=batch_size, encoding='wav')
+    name, audio, sample_rate, step, max_outputs=batch_size, encoding='wav'
+  )
 
 
 def f0_summary(f0_hz, f0_hz_predict, step, name='f0_midi', tag='f0_midi'):
@@ -157,7 +161,6 @@ def midi_summary(controls, step, name, frame_rate, notes_key):
   """Plots segmented midi with controls."""
   batch_size = controls['f0_hz'].shape[0]
   for i in range(batch_size):
-
     amps = controls['harmonic']['controls']['amplitudes'][i]
     f0_hz = ddsp.core.hz_to_midi(controls['f0_hz'][i])
 
@@ -187,10 +190,9 @@ def midi_summary(controls, step, name, frame_rate, notes_key):
     fig_summary(f'midi/{name}_{i + 1}', fig, step)
 
 
-def _get_reasonable_f0_min_max(f0_midi,
-                               max_spike=5.0,
-                               min_midi_value=5.0,
-                               pad=6.0):
+def _get_reasonable_f0_min_max(
+  f0_midi, max_spike=5.0, min_midi_value=5.0, pad=6.0
+):
   """Find the min and max for an f0 plot, ignoring spike glitches and low notes.
 
    This function finds the min and max of the f0 after two operations to omit
@@ -224,8 +226,7 @@ def _get_reasonable_f0_min_max(f0_midi,
 
   # Combine the two masked arrays
   comb_masks = np.ma.array(
-      f0_midi,
-      mask=np.logical_or(diff_mask.mask, f0_mask.mask)
+    f0_midi, mask=np.logical_or(diff_mask.mask, f0_mask.mask)
   )
 
   # Comute min/max with the padding and return.
@@ -261,22 +262,24 @@ def midiae_f0_summary(f0_hz, outputs, step):
   """
   batch_size = int(f0_hz.shape[0])
   for i in range(batch_size):
-
     f0_midi = ddsp.core.hz_to_midi(tf.squeeze(f0_hz[i]))
     q_pitch = np.squeeze(outputs['q_pitch'][i])
     f0_rec = np.squeeze(outputs['f0_midi_pred'][i])
-    _midiae_f0_helper(q_pitch, f0_midi, f0_rec, i, step, 'rec_f0',
-                      'midiae_decoder_pitch')
+    _midiae_f0_helper(
+      q_pitch, f0_midi, f0_rec, i, step, 'rec_f0', 'midiae_decoder_pitch'
+    )
 
     if 'f0_midi_rec2' in outputs:
       f0_rec2 = np.squeeze(outputs['f0_midi_pred2'][i])
-      _midiae_f0_helper(q_pitch, f0_midi, f0_rec2, i, step, 'rec_f0_2',
-                        'midiae_decoder_pitch2')
+      _midiae_f0_helper(
+        q_pitch, f0_midi, f0_rec2, i, step, 'rec_f0_2', 'midiae_decoder_pitch2'
+      )
 
     if 'pitch' in outputs:
       raw_pitch = np.squeeze(outputs['pitch'][i])
-      _midiae_f0_helper(q_pitch, f0_midi, raw_pitch, i, step, 'z_pitch',
-                        'midiae_encoder_pitch')
+      _midiae_f0_helper(
+        q_pitch, f0_midi, raw_pitch, i, step, 'z_pitch', 'midiae_encoder_pitch'
+      )
 
 
 def _midiae_ld_helper(ld_input, ld_rec, curve, db_key, i, step, label, tag):
@@ -307,19 +310,29 @@ def midiae_ld_summary(ld_feat, outputs, step, db_key='loudness_db'):
     ld_rec = np.squeeze(outputs[f'{db_key}_rec'][i])
     vel_quant = np.squeeze(outputs['velocity_quant'][i])
 
-    _midiae_ld_helper(ld_input, ld_rec, vel_quant, db_key, i, step,
-                      'q_vel', 'midiae_decoder_ld')
+    _midiae_ld_helper(
+      ld_input, ld_rec, vel_quant, db_key, i, step, 'q_vel', 'midiae_decoder_ld'
+    )
 
     if f'{db_key}_rec2' in outputs:
       ld_rec2 = np.squeeze(outputs[f'{db_key}_rec2'][i])
-      _midiae_ld_helper(ld_input, ld_rec2, vel_quant, db_key, i, step,
-                        'q_vel', 'midiae_decoder_ld2')
+      _midiae_ld_helper(
+        ld_input,
+        ld_rec2,
+        vel_quant,
+        db_key,
+        i,
+        step,
+        'q_vel',
+        'midiae_decoder_ld2',
+      )
 
     if 'velocity' in outputs:
       vel = np.squeeze(outputs['velocity'][i])
 
-      _midiae_ld_helper(ld_input, ld_rec, vel, db_key, i, step,
-                        'vel', 'midiae_encoder_ld')
+      _midiae_ld_helper(
+        ld_input, ld_rec, vel, db_key, i, step, 'vel', 'midiae_encoder_ld'
+      )
 
 
 def midiae_sp_summary(outputs, step):
@@ -397,9 +410,17 @@ def midiae_sp_summary(outputs, step):
     fig_summary(f'noise_mags/noise_mags_{i + 1}', fig, step)
 
 
-def pianoroll_summary(batch, step, name, frame_rate, pred_key,
-                      gt_key='note_active_velocities', ch=None,
-                      threshold=0.0, tb_name='pianoroll'):
+def pianoroll_summary(
+  batch,
+  step,
+  name,
+  frame_rate,
+  pred_key,
+  gt_key='note_active_velocities',
+  ch=None,
+  threshold=0.0,
+  tb_name='pianoroll',
+):
   """Plots ground truth pianoroll against predicted MIDI."""
   batch_size = batch[gt_key].shape[0]
   for i in range(batch_size):
@@ -412,10 +433,11 @@ def pianoroll_summary(batch, step, name, frame_rate, pred_key,
 
     if isinstance(pred_pianoroll, note_seq.NoteSequence):
       pred_pianoroll = sequences_lib.sequence_to_pianoroll(
-          pred_pianoroll,
-          frames_per_second=frame_rate,
-          min_pitch=note_seq.MIN_MIDI_PITCH,
-          max_pitch=note_seq.MAX_MIDI_PITCH).active[:-1, :]
+        pred_pianoroll,
+        frames_per_second=frame_rate,
+        min_pitch=note_seq.MIN_MIDI_PITCH,
+        max_pitch=note_seq.MAX_MIDI_PITCH,
+      ).active[:-1, :]
     img = np.zeros((gt_pianoroll.shape[1], gt_pianoroll.shape[0], 4))
 
     # All values in `rgb` should be 0.0 except the value at index `idx`
@@ -428,8 +450,9 @@ def pianoroll_summary(batch, step, name, frame_rate, pred_key,
     img[:, :, pred_color['idx']] = pred_pianoroll_t
 
     # this is the alpha channel:
-    img[:, :, 3] = np.logical_or(gt_pianoroll_t > threshold,
-                                 pred_pianoroll_t > threshold)
+    img[:, :, 3] = np.logical_or(
+      gt_pianoroll_t > threshold, pred_pianoroll_t > threshold
+    )
 
     # Determine the min & max y-values for plotting.
     gt_note_indices = np.argmax(gt_pianoroll, axis=1)
@@ -444,18 +467,20 @@ def pianoroll_summary(batch, step, name, frame_rate, pred_key,
       upper_limit = 127
 
     # Make the figures and add them to the summary.
-    fig, ax, _ = pianoroll_plot_setup(figsize=(6.0, 4.0),
-                                      xlim=[0, img.shape[1]])
+    fig, ax, _ = pianoroll_plot_setup(
+      figsize=(6.0, 4.0), xlim=[0, img.shape[1]]
+    )
     ax.imshow(img, origin='lower', aspect='auto', interpolation='nearest')
     ax.set_ylim((max(lower_limit - 5, 0), min(upper_limit + 5, 127)))
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
     labels_and_colors = [
-        ('GT MIDI', gt_color['rgb']),  # green
-        ('Pred MIDI', pred_color['rgb']),  # blue
-        ('Overlap', gt_color['rgb'] + pred_color['rgb'])  # cyan
+      ('GT MIDI', gt_color['rgb']),  # green
+      ('Pred MIDI', pred_color['rgb']),  # blue
+      ('Overlap', gt_color['rgb'] + pred_color['rgb']),  # cyan
     ]
-    patches = [mpatches.Patch(label=l, color=c) for l, c in labels_and_colors]
+    patches = [
+      mpatches.Patch(label=label, color=color)
+      for label, color in labels_and_colors
+    ]
     fig.legend(handles=patches)
     fig_summary(f'{tb_name}/{name}_{i + 1}', fig, step)
-
-

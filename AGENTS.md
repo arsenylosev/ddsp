@@ -225,7 +225,7 @@ ddsp/
 ## Known Issues
 1. **absl.flags conflict**: `prepare_tfrecord_lib_test.py` fails with pytest `-v`. Run without `-v`.
 2. **NumPy version**: Use `numpy<2` (tested with 1.26.4)
-3. **CREPE dependency removed**: crepe<=0.0.12 requires hmmlearn<0.3.0, which doesn't build on Python 3.11. The dependency has been removed from pyproject.toml. To use crepe features, install manually: `pip install crepe` after setting up the environment.
+3. **CREPE**: Upgraded to crepe>=0.0.16 (requires hmmlearn>=0.3.0, compatible with Python 3.11). The dependency is now included in pyproject.toml.
 4. **Protobuf + note_seq**: Set `PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python` before running ddsp commands:
    ```bash
    export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python

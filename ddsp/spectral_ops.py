@@ -251,7 +251,8 @@ def pad(
 
   else:
     raise ValueError(
-      f"`padding` must be one of ['center', 'same''valid'], received ({padding})."
+      f"`padding` must be one of ['center', 'same''valid'], "
+      f'received ({padding}).'
     )
 
   return tf.pad(x, pads, mode=mode, constant_values=constant_values)

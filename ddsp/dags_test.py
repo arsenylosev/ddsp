@@ -26,11 +26,11 @@ gin.external_configurable(tf.keras.layers.Dense, 'tf.keras.layers.Dense')
 @gin.configurable
 class ConfigurableDAGLayer(dags.DAGLayer):
   """Configurable wrapper DAGLayer encapsulated for this test."""
+
   pass
 
 
 class DAGLayerTest(parameterized.TestCase, tf.test.TestCase):
-
   def setUp(self):
     """Create some dummy input data for the chain."""
     super().setUp()
@@ -65,7 +65,8 @@ class DAGLayerTest(parameterized.TestCase, tf.test.TestCase):
     ConfigurableDAGLayer.dag = [
         (@encoder/layers.Dense(), ['inputs/test_data'], ['z']),
         (@bottleneck/layers.Dense(), ['encoder/z'], ['z_bottleneck']),
-        (@decoder/layers.Dense(), ['bottleneck/z_bottleneck'], ['reconstruction']),
+        (@decoder/layers.Dense(), ['bottleneck/z_bottleneck'],
+         ['reconstruction']),
     ]
     encoder/layers.Dense.name = 'encoder'
     encoder/layers.Dense.units = {self.x_dims}
@@ -78,13 +79,16 @@ class DAGLayerTest(parameterized.TestCase, tf.test.TestCase):
     """
 
   @parameterized.named_parameters(
-      ('kwarg_modules', True),
-      ('dag_modules', False),
+    ('kwarg_modules', True),
+    ('dag_modules', False),
   )
   def test_build_layer(self, kwarg_modules):
     """Tests if layer builds properly and produces outputs of correct shape."""
-    gin_config = (self.gin_config_kwarg_modules if kwarg_modules else
-                  self.gin_config_dag_modules)
+    gin_config = (
+      self.gin_config_kwarg_modules
+      if kwarg_modules
+      else self.gin_config_dag_modules
+    )
     with gin.unlock_config():
       gin.clear_config()
       gin.parse_config(gin_config)
@@ -106,6 +110,7 @@ class DAGLayerTest(parameterized.TestCase, tf.test.TestCase):
 
     # Confirm that variables are inherited by DAGLayer.
     self.assertLen(dag_layer.trainable_variables, 6)  # 3 weights, 3 biases.
+
 
 if __name__ == '__main__':
   tf.test.main()

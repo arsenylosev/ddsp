@@ -19,22 +19,27 @@ from ddsp.core import tf_float32
 from ddsp.training import models
 import gin
 import numpy as np
-import pkg_resources
+import os
 import tensorflow as tf
 
-GIN_PATH = pkg_resources.resource_filename(__name__, '../gin')
+# Get gin path relative to this file
+GIN_PATH = os.path.join(os.path.dirname(__file__), '../gin')
 gin.add_config_file_search_path(GIN_PATH)
 
 
 class AutoencoderTest(parameterized.TestCase, tf.test.TestCase):
-
   @parameterized.named_parameters(
-      ('nsynth_ae', 16000, 250, False, 'papers/iclr2020/nsynth_ae.gin'),
-      ('solo_instrument', 16000, 250, False,
-       'papers/iclr2020/solo_instrument.gin'),
-      ('vst_16kHz', 16000, 50, True, 'models/vst/vst.gin'),
-      ('vst_32kHz', 32000, 50, True, 'models/vst/vst_32k.gin'),
-      ('vst_48kHz', 48000, 50, True, 'models/vst/vst_48k.gin'),
+    ('nsynth_ae', 16000, 250, False, 'papers/iclr2020/nsynth_ae.gin'),
+    (
+      'solo_instrument',
+      16000,
+      250,
+      False,
+      'papers/iclr2020/solo_instrument.gin',
+    ),
+    ('vst_16kHz', 16000, 50, True, 'models/vst/vst.gin'),
+    ('vst_32kHz', 32000, 50, True, 'models/vst/vst_32k.gin'),
+    ('vst_48kHz', 48000, 50, True, 'models/vst/vst_48k.gin'),
   )
   def test_build_model(self, sample_rate, frame_rate, centered, gin_file):
     """Tests if Model builds properly and produces audio of correct shape.
@@ -57,11 +62,11 @@ class AutoencoderTest(parameterized.TestCase, tf.test.TestCase):
       # n_samples_16k += 320
 
     inputs = {
-        'loudness_db': np.zeros([n_batch, n_frames]),
-        'f0_hz': np.zeros([n_batch, n_frames]),
-        'f0_confidence': np.zeros([n_batch, n_frames]),
-        'audio': np.random.randn(n_batch, n_samples),
-        'audio_16k': np.random.randn(n_batch, n_samples_16k),
+      'loudness_db': np.zeros([n_batch, n_frames]),
+      'f0_hz': np.zeros([n_batch, n_frames]),
+      'f0_confidence': np.zeros([n_batch, n_frames]),
+      'audio': np.random.randn(n_batch, n_samples),
+      'audio_16k': np.random.randn(n_batch, n_samples_16k),
     }
     inputs = {k: tf_float32(v) for k, v in inputs.items()}
 
