@@ -38,8 +38,8 @@ jobs:
         run: |
           # Install TensorFlow and TFP FIRST (must be before any package that could upgrade them)
           pip install "tensorflow==2.12.1" "tensorflow-probability==0.20.1" "protobuf>=3.20.3,<4.0" "tensorflow-metadata<1.15"
-          # Install setuptools for pkg_resources (needed by apache-beam)
-          pip install "setuptools<70" "pkg_resources"
+          # Ensure setuptools is available for pkg_resources (needed by apache-beam)
+          pip install "setuptools<70"
         env:
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
 
