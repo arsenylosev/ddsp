@@ -19,28 +19,17 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-requires-python = ">=3.10,<3.12"
+requires-python = ">=3.11,<3.13"
 dependencies = [
     # Core ML
     # Pin protobuf <4 to avoid "Descriptors cannot be created directly" errors
     "protobuf<4",
-    "tensorflow>=2.15.0,<2.16",
-    "tensorflow-probability>=0.22.0,<0.23",
+    "tensorflow>=2.15.0,<2.18",
+    "tensorflow-probability>=0.22.0,<0.25",
     "tensorflow-datasets>=4.9",
-    # CUDA libraries (bundled via pip for seamless GPU support)
-    # TensorFlow 2.15 compiled against CUDA 12.2 and cuDNN 8.9
-    "nvidia-cudnn-cu12>=8.9,<9.0",
-    "nvidia-cublas-cu12>=12.0,<13.0",
-    "nvidia-cuda-runtime-cu12>=12.2,<13.0",
-    "nvidia-cuda-nvrtc-cu12>=12.0,<13.0",
-    "nvidia-cuda-nvcc-cu12>=12.0,<13.0",
-    "nvidia-cufft-cu12>=11.0,<12.0",
-    "nvidia-curand-cu12>=10.3,<11.0",
-    "nvidia-cusolver-cu12>=11.4,<12.0",
-    "nvidia-cusparse-cu12>=12.0,<13.0",
-    "nvidia-nvjitlink-cu12>=12.0,<13.0",
     # Audio/Signal Processing
     "librosa>=0.10",
     "crepe>=0.0.16",
@@ -66,6 +55,24 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# CUDA support (install with: pip install ddsp[cuda])
+# TensorFlow 2.15+ compiled against CUDA 12.2 and cuDNN 8.9
+cuda = [
+    "nvidia-cudnn-cu12>=8.9,<9.0",
+    "nvidia-cublas-cu12>=12.0,<13.0",
+    "nvidia-cuda-runtime-cu12>=12.2,<13.0",
+    "nvidia-cuda-nvrtc-cu12>=12.0,<13.0",
+    "nvidia-cuda-nvcc-cu12>=12.0,<13.0",
+    "nvidia-cufft-cu12>=11.0,<12.0",
+    "nvidia-curand-cu12>=10.3,<11.0",
+    "nvidia-cusolver-cu12>=11.4,<12.0",
+    "nvidia-cusparse-cu12>=12.0,<13.0",
+    "nvidia-nvjitlink-cu12>=12.0,<13.0",
+]
+# GPU support alias (same as cuda)
+gpu = [
+    "ddsp[cuda]",
+]
 tflite = [
     "tflite_support<=0.1;python_version<='3.8'",
 ]
@@ -78,6 +85,11 @@ gcp = [
 data_preparation = [
     "apache_beam",
     "pyparsing<=2.4.7",
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.3.0",
+    "uv",
 ]
 test = [
     "pytest>=8.0",
@@ -133,7 +145,7 @@ ignore = [
 convention = "google"
 
 [tool.ruff.format]
-quote-style = "single"
+quote-style = 'single'
 indent-style = "space"
 line-ending = "auto"
 skip-magic-trailing-comma = false
@@ -152,3 +164,12 @@ filterwarnings = [
 
 [tool.uv]
 override-dependencies = ["setuptools<70"]
+
+# UV-specific configuration
+[tool.uv.pip]
+# Ensure uv uses the correct Python version
+python-version = "3.11"
+
+[tool.uv.workspace]
+# Prevent uv.lock from being committed (library project)
+members = []
