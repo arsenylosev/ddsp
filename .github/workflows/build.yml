@@ -14,13 +14,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          version: "0.5.x"
-          enable-cache: true
-          cache-dependency-glob: "**/pyproject.toml"
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -31,23 +24,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg libsndfile1
 
-      - name: Install dependencies with uv
+      - name: Install dependencies
         run: |
-          # Create virtual environment
-          uv venv --python 3.11
-          # Install all build dependencies (for --no-build-isolation mode)
-          uv pip install setuptools wheel hatchling hatch-vcs editables
-          # Install package with all extras (using --no-build-isolation for crepe compatibility)
-          uv pip install --no-build-isolation -e ".[data_preparation,test]"
+          pip install -U pip setuptools wheel
+          # Install crepe from pre-built wheel only (avoid build from source)
+          pip install crepe --only-binary :all: || pip install crepe
+          # Install rest with legacy resolver
+          pip install -e ".[data_preparation,test]" --use-deprecated=legacy-resolver
 
       - name: Check formatting
-        run: uv run ruff format --check ddsp
+        run: ruff format --check ddsp
 
       - name: Lint with ruff
-        run: uv run ruff check ddsp
+        run: ruff check ddsp
 
       - name: Test with pytest
-        run: uv run pytest --tb=short
+        run: pytest --tb=short
         env:
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
 
