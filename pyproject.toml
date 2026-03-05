@@ -30,6 +30,7 @@ dependencies = [
     "tensorflow>=2.15.0,<2.18",
     "tensorflow-probability>=0.22.0,<0.25",
     "tensorflow-datasets>=4.9",
+    "tf_keras",  # Required by tensorflow-probability 0.24+
     # Audio/Signal Processing
     "librosa>=0.10",
     "crepe>=0.0.16",
@@ -133,8 +134,8 @@ build-constraint-dependencies = ["setuptools<70", "wheel"]
 override-dependencies = ["setuptools<70"]
 
 [tool.uv.pip]
-# Ensure build dependencies are available
-build-isolation = false  # Required for crepe 0.0.16
+# Ensure build dependencies are available for legacy packages like crepe
+no-build-isolation = true  # Required for crepe 0.0.16
 
 [tool.ruff]
 target-version = "py311"
