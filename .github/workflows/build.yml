@@ -33,19 +33,19 @@ jobs:
 
       - name: Install dependencies with uv
         run: |
-          # Create virtual environment
+          # Create virtual environment with explicit Python 3.11
           uv venv --python 3.11
-          # Sync without crepe (crepe has build issues)
-          uv sync --extra data_preparation --extra test
+          # Use pip to install with specific Python version
+          uv pip install --python 3.11 -e ".[data_preparation,test]"
 
       - name: Check formatting
-        run: uv run ruff format --check ddsp
+        run: uv run --python 3.11 ruff format --check ddsp
 
       - name: Lint with ruff
-        run: uv run ruff check ddsp
+        run: uv run --python 3.11 ruff check ddsp
 
       - name: Test with pytest
-        run: uv run pytest --tb=short
+        run: uv run --python 3.11 pytest --tb=short
         env:
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
 
