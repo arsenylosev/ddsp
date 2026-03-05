@@ -34,18 +34,18 @@ jobs:
       - name: Install dependencies with uv
         run: |
           # Create virtual environment with explicit Python 3.11
-          uv venv --python 3.11
-          # Sync with test extra, forcing Python 3.11
-          uv sync --python 3.11 --extra data_preparation --extra test
+          uv venv --python 3.11.14
+          # Sync with test extra
+          uv sync --python 3.11.14 --extra data_preparation --extra test
 
       - name: Check formatting
-        run: uv run --python 3.11 ruff format --check ddsp
+        run: uv run --python 3.11.14 ruff format --check ddsp
 
       - name: Lint with ruff
-        run: uv run --python 3.11 ruff check ddsp
+        run: uv run --python 3.11.14 ruff check ddsp
 
       - name: Test with pytest
-        run: uv run --python 3.11 pytest --tb=short
+        run: uv run --python 3.11.14 pytest --tb=short
         env:
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
 
