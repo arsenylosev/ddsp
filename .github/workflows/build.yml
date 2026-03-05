@@ -29,6 +29,8 @@ jobs:
           pip install -U pip setuptools wheel
           # Install compatible TensorFlow versions first
           pip install "tensorflow>=2.12.0,<2.16.0" "tensorflow-probability>=0.20.0,<0.21.0"
+          # Install dev/test tools
+          pip install pytest ruff
           # Then install the package without deps (already have TF)
           pip install -e ".[data_preparation,test]" --no-deps
           # Install remaining deps manually
