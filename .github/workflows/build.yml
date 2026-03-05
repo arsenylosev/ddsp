@@ -27,10 +27,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -U pip setuptools wheel
-          # Install crepe from pre-built wheel only (avoid build from source)
-          pip install crepe --only-binary :all: || pip install crepe
-          # Install rest with legacy resolver
-          pip install -e ".[data_preparation,test]" --use-deprecated=legacy-resolver
+          # Install crepe with no build isolation (needs system setuptools)
+          pip install "setuptools<70" "pkg_resources" 2>/dev/null || pip install "setuptools<70"
+          pip install "crepe<=0.0.13" --no-build-isolation
+          # Install rest
+          pip install -e ".[data_preparation,test]"
 
       - name: Check formatting
         run: ruff format --check ddsp
