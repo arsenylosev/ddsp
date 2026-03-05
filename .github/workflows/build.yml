@@ -31,12 +31,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg libsndfile1
 
-      - name: Install dependencies with uv
+      - name: Install dependencies
         run: |
-          # Create virtual environment
+          # Create venv
           uv venv --python 3.11
-          # Sync with extras - uv will use build-constraint-dependencies from pyproject.toml
-          uv sync --extra data_preparation --extra test
+          # Pre-install build dependencies for crepe
+          uv pip install "setuptools<70" wheel
+          # Install crepe separately with no build isolation
+          uv pip install --no-build "crepe>=0.0.16" || uv pip install "crepe>=0.0.16"
+          # Install the rest of the package
+          uv pip install -e ".[data_preparation,test]"
 
       - name: Check formatting
         run: uv run ruff format --check ddsp
