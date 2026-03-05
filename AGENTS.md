@@ -4,124 +4,58 @@ AI agent guidelines for the DDSP (Differentiable Digital Signal Processing) code
 
 ## Environment Setup
 
-**Python**: 3.11 (upgraded from 3.10, TensorFlow 2.15 requires Python 3.10-3.11)
+**Prerequisites**: Python 3.10-3.11, NVIDIA driver ≥525 (for GPU)
 
-**Installation with uv** (Recommended - 10-100x faster):
+**One-Command Setup**:
 ```bash
-# Install uv if not already installed
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Create and activate virtual environment
-uv venv --python 3.11
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate   # Windows
-
-# Install with all development dependencies
 uv sync --extra data_preparation --extra test
-
-# Or install in editable mode for development
-uv pip install -e ".[data_preparation,test]"
 ```
 
-**GPU Support**: To enable GPU support, you need CUDA libraries. Use the provided activation script:
+**CREPE Workaround** (required if sync fails):
 ```bash
-# This automatically sets up CUDA libraries from conda and protobuf workaround
-source ./activate_gpu.sh
-
-# Or manually set these environment variables:
-export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-export LD_LIBRARY_PATH=/home/jovyan/.uconda/envs/ddsp_env/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:$LD_LIBRARY_PATH
-```
-
-**Alternative: Installation with pip**:
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-pip install -e ".[data_preparation,test]"
-```
-
-**Legacy: Conda Installation** (for CUDA/GPU support):
-```bash
-conda create -n ddsp_env python=3.11 -y
-conda activate ddsp_env
-conda install -c conda-forge cudnn=8.9 cuda-toolkit=12.5 -y
-pip install -e ".[data_preparation,test]"
-```
-
-**Console Scripts**: `ddsp_export`, `ddsp_run`, `ddsp_prepare_tfrecord`, `ddsp_generate_synthetic_dataset`, `ddsp_ai_platform`
-
-**Required Workaround for Protobuf**: For TFDS + protobuf 6.x incompatibility with note_seq:
-```bash
-export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-```
-
-**Important**: Always run ddsp commands with the protobuf workaround:
-```bash
-export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python && ddsp_run --mode=train ...
+uv pip install "setuptools<70" wheel && uv pip install crepe>=0.0.16 --no-build-isolation && rm -rf .venv && uv sync --extra data_preparation --extra test
 ```
 
 ## Build/Lint/Test Commands
 
 ### Testing
 ```bash
-# Using uv (recommended)
-uv run pytest                                  # all tests
-uv run pytest ddsp/core_test.py               # single file
-uv run pytest ddsp/core_test.py::test_midi_to_hz_is_accurate  # single test
-uv run pytest ddsp/spectral_ops_test.py
-uv run pytest -k "test_name" ddsp/            # filter tests by name pattern
-uv run pytest -x ddsp/                         # stop on first failure
-uv run pytest --tb=short ddsp/                 # shorter traceback
+# Single test (correct format with class prefix)
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python && uv run pytest ddsp/core_test.py::UtilitiesTest::test_midi_to_hz_is_accurate
 
-# Using pip/conda
-pytest                                  # all tests
-pytest ddsp/core_test.py               # single file
-pytest ddsp/core_test.py::test_midi_to_hz_is_accurate  # single test
-PYTHONPATH=$(pwd):$PYTHONPATH pytest ddsp/spectral_ops_test.py
+# Single file
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python && uv run pytest ddsp/core_test.py
+
+# All tests
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python && uv run pytest
+
+# Filter by name pattern
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python && uv run pytest -k "test_name" ddsp/
+
+# CI test command (no verbose flags)
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python && uv run pytest --tb=short
 ```
 
-### Linting
+### Linting & Formatting
 ```bash
-# Using uv (recommended)
-uv run ruff check ddsp                            # entire codebase
-uv run ruff check --select E,W,F ddsp              # errors only
-uv run ruff check ddsp/core.py                     # single file
+# Check all files
+uv run ruff check ddsp
 
-# Using pip/conda
-ruff check ddsp
-ruff check --select E,W,F ddsp
-ruff check ddsp/core.py
-```
+# Format all files
+uv run ruff format ddsp
 
-### Formatting
-```bash
-# Using uv (recommended)
-uv run ruff format ddsp                            # format all files
-uv run ruff format --check ddsp                     # check formatting (CI)
-uv run ruff format ddsp/core.py                     # format single file
+# Check single file
+uv run ruff check ddsp/core.py
 
-# Using pip/conda
-ruff format ddsp
-ruff format --check ddsp
-ruff format ddsp/core.py
-```
-
-### Type Checking
-```bash
-# Using uv
-uv run mypy ddsp
-uv run mypy ddsp/core.py --ignore-missing-imports
-
-# Using pip
-mypy ddsp
-mypy ddsp/core.py --ignore-missing-imports
+# CI format check (dry-run)
+uv run ruff format --check ddsp
 ```
 
 ### Running ddsp_run
 ```bash
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python && uv run ddsp_run \
   --mode=train \
-  --save_dir=/path/to/experiments/test \
+  --save_dir=/path/to/experiments \
   --gin_file=ddsp/training/gin/models/solo_instrument.gin \
   --gin_file=ddsp/training/gin/datasets/tfrecord.gin \
   --gin_param="TFRecordProvider.file_pattern='/absolute/path/to/*.tfrecord*'"
@@ -131,13 +65,13 @@ export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python && uv run ddsp_run \
 
 ### Copyright Header
 ```python
-# Copyright 2024 The DDSP Authors.
+# Copyright 2026 The DDSP Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 ```
 
 ### Imports
-Order: standard library → third-party → local. Group by type with blank lines.
+Order: stdlib → third-party → local. Group with blank lines.
 ```python
 from collections import abc
 import copy
@@ -151,101 +85,81 @@ import tensorflow.compat.v2 as tf
 from ddsp import core
 ```
 - Use `import tensorflow.compat.v2 as tf`
-- Alias: `tfkl = tf.keras.layers`, `tfd = tfp.distributions`
+- Aliases: `tfkl = tf.keras.layers`, `tfd = tfp.distributions`
 - Avoid `from X import *`
 
-### Formatting (from pylintrc)
+### Formatting
 - **Line length**: 80 characters max
-- **Indentation**: 2 spaces (not 4)
-- **Indent after paren**: 4 spaces
+- **Indentation**: 2 spaces (4 after paren continuation)
+- **Quotes**: Single quotes preferred
+- Docstrings for all public functions
 
 ### Naming Conventions
 - Variables/functions: `snake_case`
 - Classes: `PascalCase`
 - Constants: `UPPER_SNAKE_CASE`
-- Private members: `_private_method`
+- Private: `_private_method`
 
-### Type Hints
+### Type Hints & Function Design
 ```python
 TensorDict = Dict[Text, tf.Tensor]
 Number = TypeVar('Number', int, float, np.ndarray, tf.Tensor)
 ```
-
-### Function Design
-- Google-style docstrings (purpose, args, returns)
-- Single responsibility principle
+- Google-style docstrings (Args, Returns sections)
 - Return early for error cases
-
-### Error Handling
+- Raise errors with descriptive messages:
 ```python
-raise ValueError(f'Keys: {keys} must be the same length as {x}')
+raise ValueError(f'Keys: {keys} must be same length as {x}')
 raise NotImplementedError  # for abstract methods
 ```
 
 ### TensorFlow Conventions
-- Use `tf.float32` explicitly
+- Use `tf.float32` explicitly (not `tf.float16`)
 - Check `tf.executing_eagerly()` for eager/graph decisions
 - Use `tf.function` for performance-critical code
-- Prefer Keras layers (`tfkl`)
-- Set `autocast=False` in custom layers
+- Prefer Keras layers (`tfkl`), set `autocast=False`
 
-### Configuration with Gin
-- Use `@gin.register` for functions/classes in DAG configs
-- Use `@gin.configurable` for globally configurable functions
-- Keep core library agnostic to gin where possible
-- Gin files located in `ddsp/training/gin/`
+### Gin Configuration
+- Use `@gin.register` for DAG-configurable components
+- Use `@gin.configurable` for global configuration
+- Gin files in `ddsp/training/gin/`
 
 ### Test Files
-- Naming: `*_test.py`
-- Use `from absl.testing import parameterized`
-- Base classes: `parameterized.TestCase, tf.test.TestCase`
-- Tests in same directory as implementation
+- Naming: `*_test.py`, base: `parameterized.TestCase, tf.test.TestCase`
+- Place in same directory, classes: `Test*`, methods: `test_*`
+- **Avoid `absl.flags` in test files** - it conflicts with pytest CLI flags
+- Use `tempfile.mkdtemp()` for temp directories, not `absl.flags`
 
 ## Project Structure
-
 ```
 ddsp/
-  core.py              # Core DSP functions (utilities, shifts, filters)
-  spectral_ops.py      # STFT, mel, mag spectrograms
-  processors.py        # Synthesizer processors (additive, spectral, noise)
-  training/
-    ddsp_run.py        # Main training entry point
-    gin/               # Gin configuration files
-    models/            # Model definitions
-    decoders/          # Decoder architectures
+  core.py,spectral_ops.py,processors.py,synths.py,effects.py
+  training/ddsp_run.py,gin/,models/,decoders/,data_preparation/
 ```
 
 ## Audio Conventions
 - Sample rate: 16000 Hz (default)
 - Frame sizes: 2048, 4096, 8192 (power of 2)
+- CREPE produces frames at 100 fps (hop_size=160 at 16kHz)
+- Feature frame rates (e.g., 250 fps) may differ from audio sample rate
+- **Important**: When resampling audio, handle audio_16k and audio at different sample rates separately
 - Overlap: 0.75 (75%) standard for STFT
 - MIDI range: 0-127, f0_hz: 0-20000 Hz
-- Audio tensors: `[batch, samples]` or `[samples]` (squeeze channel dim)
+- Audio tensors: `[batch, samples]` or `[samples]`
 
-## Known Issues
-1. **absl.flags conflict**: `prepare_tfrecord_lib_test.py` fails with pytest `-v`. Run without `-v`.
-2. **NumPy version**: Use `numpy<2` (tested with 1.26.4)
-3. **CREPE**: Upgraded to crepe>=0.0.16 (requires hmmlearn>=0.3.0, compatible with Python 3.11). The dependency is now included in pyproject.toml.
-4. **Protobuf + note_seq**: Set `PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python` before running ddsp commands:
-   ```bash
-   export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-   ddsp_run --mode=train ...
-   ```
-5. **TensorFlow/Keras version compatibility**: DDSP requires TensorFlow 2.15.0 and Keras 2.15.0. Newer versions (2.20+) are incompatible due to Keras 3.x API changes.
-6. **TFRecord file path**: Use absolute paths for TFRecord files, e.g., `/path/to/tfrecords/*.tfrecord*`
-7. **Keras 3.x incompatibility**: Standalone Keras 3.x breaks tf.keras layers. Use TF 2.15.0 bundled Keras.
-8. **Package Management**: Project uses `pyproject.toml` (PEP 621). Use `uv` for best experience or `pip install -e ".[extras]"` with pip.
-9. **GPU Support**: A special activation script is provided to enable GPU support. It sets up CUDA libraries from the existing conda `ddsp_env`:
-   ```bash
-   source ./activate_gpu.sh
-   # Or manually:
-   export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-   export LD_LIBRARY_PATH=/home/jovyan/.uconda/envs/ddsp_env/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:$LD_LIBRARY_PATH
-   ```
+## Known Issues & Fixes
+
+1. **absl.flags**: Fails with pytest `-v` - use `tempfile.mkdtemp()` for temp dirs instead
+2. **NumPy**: Use `numpy<2` (1.26.4 tested)
+3. **Protobuf**: Set `PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python` and pin `protobuf<4`
+4. **TFRecord paths**: Use absolute paths
+5. **TensorFlow**: Requires TF 2.15.0 (incompatible with TF 2.20+)
+6. **CREPE**: Pre-install `setuptools<70` with `--no-build-isolation`
+7. **CREPE frame rate mismatch**: CREPE outputs at 100 fps but code expects configurable `frame_rate`. Resample f0_hz/f0_confidence using `np.interp()` when frame rates differ.
+8. **Splitting audio/features**: When splitting examples, calculate window counts separately for audio (sample_rate), audio_16k (16000 Hz), and features (frame_rate) - they have different lengths even for same duration.
 
 ## Code to Avoid
 - `absl.flags` (conflicts with pytest)
-- `pkg_resources` (removed in setuptools 70+, use `os.path` instead)
+- `pkg_resources` (removed in setuptools 70+)
 - Deprecated TensorFlow APIs
 - `from X import *` imports
-- `setup.py` (project uses `pyproject.toml`, see PEP 621)
