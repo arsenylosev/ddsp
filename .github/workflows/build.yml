@@ -27,9 +27,10 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install -U pip setuptools wheel
-          pip install "tensorflow>=2.12.0,<2.16.0" "tensorflow-probability>=0.20.0,<0.21.0"
+          # Use COMPATIBLE versions: TF 2.12 + TFP 0.20
+          pip install "tensorflow==2.12.1" "tensorflow-probability==0.20.1"
           pip install -e "." --no-deps
-          pip install protobuf librosa pydub mir_eval note_seq numpy scipy gin-config apache-beam absl-py cloudml-hypertune dill future google-cloud-storage six tensorflowjs matplotlib
+          pip install protobuf librosa pydub mir_eval note_seq "numpy<1.24" scipy gin-config apache-beam absl-py cloudml-hypertune dill future google-cloud-storage six tensorflowjs matplotlib
           pip install pytest ruff
 
       - name: Run tests
