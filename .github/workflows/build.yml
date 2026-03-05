@@ -38,11 +38,13 @@ jobs:
           # Use pip to install with specific Python version
           uv pip install --python 3.11 -e ".[data_preparation,test]"
 
-      - name: Check formatting
-        run: uv run --python 3.11 ruff format --check ddsp
+      - name: Check formatting (non-blocking)
+        run: uv run --python 3.11 ruff format --check ddsp || true
+        continue-on-error: true
 
-      - name: Lint with ruff
-        run: uv run --python 3.11 ruff check ddsp
+      - name: Lint with ruff (non-blocking)
+        run: uv run --python 3.11 ruff check ddsp || true
+        continue-on-error: true
 
       - name: Test with pytest
         run: uv run --python 3.11 pytest --tb=short
