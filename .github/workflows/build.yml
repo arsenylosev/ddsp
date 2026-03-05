@@ -14,6 +14,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.5.x"
+          enable-cache: true
+          cache-dependency-glob: "**/pyproject.toml"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -24,25 +31,21 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg libsndfile1
 
-      - name: Install build dependencies
+      - name: Install dependencies with uv
         run: |
-          pip install --upgrade "setuptools<70" wheel "pkg_resources" 2>/dev/null || pip install --upgrade "setuptools<70" wheel
-
-      - name: Install dependencies
-        run: |
-          # Install crepe first with no build isolation to avoid pkg_resources issue
-          pip install --no-build-isolation "crepe>=0.0.16"
-          # Then install the rest
-          pip install -e ".[data_preparation,test]"
+          # Create virtual environment
+          uv venv --python 3.11
+          # Sync with extras - uv will use build-constraint-dependencies from pyproject.toml
+          uv sync --extra data_preparation --extra test
 
       - name: Check formatting
-        run: ruff format --check ddsp
+        run: uv run ruff format --check ddsp
 
       - name: Lint with ruff
-        run: ruff check ddsp
+        run: uv run ruff check ddsp
 
       - name: Test with pytest
-        run: pytest --tb=short
+        run: uv run pytest --tb=short
         env:
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
 
