@@ -31,10 +31,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg libsndfile1
 
-      - name: Install dependencies
+      - name: Create virtual environment and install dependencies
         run: |
+          uv venv --python 3.11
           # Pre-install setuptools for crepe build compatibility
-          pip install "setuptools<70"
+          uv pip install "setuptools<70"
           uv pip install -e ".[data_preparation,test]"
 
       - name: Check formatting
