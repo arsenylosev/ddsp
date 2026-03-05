@@ -14,13 +14,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          version: "0.5.x"
-          enable-cache: true
-          cache-dependency-glob: "**/pyproject.toml"
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -31,10 +24,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg libsndfile1
 
-      - name: Install dependencies with pip
+      - name: Install build dependencies
         run: |
-          # Use pip directly to avoid uv's isolated build environment issues with crepe
-          pip install "setuptools<70" wheel
+          pip install --upgrade "setuptools<70" wheel "pkg_resources" 2>/dev/null || pip install --upgrade "setuptools<70" wheel
+
+      - name: Install dependencies
+        run: |
+          # Install crepe first with no build isolation to avoid pkg_resources issue
+          pip install --no-build-isolation "crepe>=0.0.16"
+          # Then install the rest
           pip install -e ".[data_preparation,test]"
 
       - name: Check formatting
