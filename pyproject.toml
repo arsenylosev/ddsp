@@ -24,22 +24,22 @@ classifiers = [
 ]
 requires-python = ">=3.11,<3.13"
 dependencies = [
-    # Core ML
-    # Pin protobuf <4 to avoid "Descriptors cannot be created directly" errors
-    "protobuf<4",
-    "tensorflow>=2.15.0,<2.18",
-    "tensorflow-probability>=0.22.0,<0.25",
-    "tensorflow-datasets>=4.9",
-    "tf_keras",  # Required by tensorflow-probability 0.24+
+    # Core ML - Using stable versions from original magenta/ddsp
+    # Pin protobuf to avoid dependency issues
+    "protobuf<=3.20",
+    "tensorflow>=2.11,<2.16",
+    "tensorflow-probability>=0.18,<0.22",
+    "tensorflow-datasets>=4.9,<5.0",
     # Audio/Signal Processing
-    "librosa>=0.10",
-    "crepe>=0.0.16",
+    "librosa>=0.10,<0.11",
+    # Crepe: use older version that builds reliably
+    "crepe<=0.0.13",
     "pydub<=0.25.1",
     "mir_eval<=0.7",
     "note_seq<0.0.4",
     # Numerical
-    "numpy<2",
-    "scipy>=1.10.1",
+    "numpy<1.24",
+    "scipy>=1.10.1,<1.12",
     # Configuration
     "gin-config>=0.3.0",
     "apache-beam",
@@ -56,9 +56,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# CUDA support (auto-detected or manual install)
-# Install with: pip install ddsp[cuda] or uv pip install -e ".[cuda]"
-# TensorFlow 2.15+ compiled against CUDA 12.2 and cuDNN 8.9
+# CUDA support (install with: pip install ddsp[cuda] or uv pip install -e ".[cuda]")
+# These are optional - library works on CPU without them
 cuda = [
     "nvidia-cudnn-cu12>=8.9,<9.0",
     "nvidia-cublas-cu12>=12.0,<13.0",
@@ -74,11 +73,6 @@ cuda = [
 # GPU support alias (same as cuda)
 gpu = [
     "ddsp[cuda]",
-]
-# Auto-detect CUDA and install if GPU is available
-# Note: This is a post-install check, not automatic installation
-autocuda = [
-    "ddsp[cuda]; sys_platform == 'linux'",
 ]
 tflite = [
     "tflite_support<=0.1;python_version<='3.8'",
@@ -97,12 +91,10 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.3.0",
     "uv",
-    "setuptools<70",  # For building crepe compatibility
 ]
 test = [
     "pytest>=8.0",
     "ruff>=0.3.0",
-    "setuptools<70",  # For building crepe compatibility
 ]
 
 [project.scripts]
@@ -125,17 +117,6 @@ packages = ["ddsp"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "ddsp/training/gin" = "ddsp/training/gin"
-
-# UV Configuration - Critical for crepe build
-[tool.uv]
-# Ensure setuptools is available for building legacy packages like crepe
-build-constraint-dependencies = ["setuptools<70", "wheel"]
-# Override for problematic packages
-override-dependencies = ["setuptools<70"]
-
-[tool.uv.pip]
-# Ensure build dependencies are available for legacy packages like crepe
-no-build-isolation = true  # Required for crepe 0.0.16
 
 [tool.ruff]
 target-version = "py311"
