@@ -32,8 +32,6 @@ dependencies = [
     "tensorflow-datasets>=4.9,<5.0",
     # Audio/Signal Processing
     "librosa>=0.10,<0.11",
-    # Crepe: use version that builds reliably
-    "crepe<=0.0.13",
     "pydub<=0.25.1",
     "mir_eval<=0.7",
     "note_seq<0.0.4",
@@ -73,6 +71,10 @@ cuda = [
 # GPU support alias (same as cuda)
 gpu = [
     "ddsp[cuda]",
+]
+# Crepe (optional - has build issues, install separately if needed)
+crepe = [
+    "crepe>=0.0.12",
 ]
 tflite = [
     "tflite_support<=0.1;python_version<='3.8'",
