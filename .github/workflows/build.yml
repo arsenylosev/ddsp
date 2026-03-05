@@ -9,43 +9,47 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
           version: "0.5.x"
           enable-cache: true
           cache-dependency-glob: "**/pyproject.toml"
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg libsndfile1
-      
+
+      - name: Install setuptools<70 for crepe build
+        run: |
+          uv pip install "setuptools<70"
+
       - name: Install dependencies
         run: |
           uv sync --extra data_preparation --extra test
-      
+
       - name: Check formatting
         run: uv run ruff format --check ddsp
-      
+
       - name: Lint with ruff
         run: uv run ruff check ddsp
-      
+
       - name: Test with pytest
         run: uv run pytest --tb=short
         env:
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
-      
+
       - name: Report success or failure as github status
         if: always()
         uses: actions/github-script@v7

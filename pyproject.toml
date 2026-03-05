@@ -151,4 +151,4 @@ filterwarnings = [
 ]
 
 [tool.uv]
-build-constraint-dependencies = ["setuptools<70", "wheel"]
+override-dependencies = ["setuptools<70"]
