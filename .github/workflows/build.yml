@@ -19,7 +19,6 @@ jobs:
         with:
           version: "0.5.x"
           enable-cache: true
-          cache-dependency-glob: "**/pyproject.toml"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -31,45 +30,48 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg libsndfile1
 
-      - name: Install DDSP package with uv
+      - name: Create venv and install TensorFlow
         run: |
-          # Create virtual environment with explicit Python 3.11
           uv venv --python 3.11
-          # Install build backend first
-          uv pip install --python 3.11 hatchling hatch-vcs editables
-          # Install package with all extras (seamless uv installation)
-          uv pip install --python 3.11 -e ".[data_preparation,test]"
-          # Verify import works
-          uv run --python 3.11 python -c "import ddsp; print(f'DDSP {ddsp.__version__} installed successfully with uv')"
+          # Install compatible TF versions FIRST (before other deps)
+          uv pip install "tensorflow>=2.12.0,<2.16.0" "tensorflow-probability>=0.20.0,<0.21.0"
 
-      - name: Check formatting (info only)
-        run: uv run --python 3.11 ruff format --check ddsp || echo "Formatting issues found (non-blocking)"
-        continue-on-error: true
+      - name: Install DDSP package
+        run: |
+          # Install ddsp without deps (TF already installed)
+          uv pip install -e "." --no-deps
+          # Install remaining deps EXCEPT tensorflow
+          uv pip install protobuf librosa pydub mir_eval note_seq numpy scipy gin-config apache-beam absl-py cloudml-hypertune dill future google-cloud-storage six tensorflowjs matplotlib
 
-      - name: Lint with ruff (info only)
-        run: uv run --python 3.11 ruff check ddsp || echo "Lint issues found (non-blocking)"
-        continue-on-error: true
+      - name: Install test tools
+        run: uv pip install pytest ruff
 
-      - name: Run tests (info only)
-        run: uv run --python 3.11 pytest --tb=short || echo "Tests have compatibility issues (non-blocking)"
-        continue-on-error: true
+      - name: Format code
+        run: uv run ruff format ddsp
+
+      - name: Check formatting
+        run: uv run ruff format --check ddsp
+
+      - name: Lint with ruff
+        run: uv run ruff check ddsp
+
+      - name: Test with pytest
+        run: uv run pytest --tb=short
         env:
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
 
-      - name: Report build status
+      - name: Report success or failure as github status
         if: always()
         uses: actions/github-script@v7
         with:
           script: |
-            const steps = ${{ toJson(steps) }};
-            const installStep = steps['Install DDSP package with uv'];
-            const success = installStep && installStep.outcome === 'success';
+            const status = '${{ job.status }}'.toLowerCase();
             github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha: context.sha,
-              state: success ? 'success' : 'failure',
+              state: status,
               target_url: `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`,
               context: 'github-actions/build',
-              description: success ? 'Package installs successfully with uv' : 'Package installation failed'
+              description: status === 'success' ? 'All checks passed' : 'Checks failed'
             });
