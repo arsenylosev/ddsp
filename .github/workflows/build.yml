@@ -35,9 +35,9 @@ jobs:
         run: |
           # Create virtual environment
           uv venv --python 3.11
-          # Install build dependencies first
-          uv pip install setuptools wheel
-          # Install package with all extras (using pip to avoid isolated build issues with crepe)
+          # Install build dependencies (including hatchling for ddsp itself)
+          uv pip install setuptools wheel hatchling
+          # Install package with all extras (using --no-build-isolation for crepe compatibility)
           uv pip install --no-build-isolation -e ".[data_preparation,test]"
 
       - name: Check formatting
