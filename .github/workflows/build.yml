@@ -48,7 +48,10 @@ jobs:
           # Install DDSP without deps first
           pip install -e "." --no-deps
           # Install remaining dependencies (avoiding packages that upgrade TF)
-          pip install librosa pydub "mir_eval<=0.7" "note_seq<0.0.4" "numpy>=1.22,<1.24" "scipy>=1.10.1,<1.12" gin-config apache-beam absl-py "cloudml-hypertune<=0.1.0.dev6" "dill<=0.3.4" future google-cloud-storage six "tensorflowjs<3.19" matplotlib "ipython<8.18.0" "tensorflow-datasets>=4.9,<5.0" crepe
+          # Install crepe first with no build isolation to avoid pkg_resources issue
+          pip install "setuptools<70" "wheel"
+          pip install librosa pydub "mir_eval<=0.7" "note_seq<0.0.4" "numpy>=1.22,<1.24" "scipy>=1.10.1,<1.12" gin-config apache-beam absl-py "cloudml-hypertune<=0.1.0.dev6" "dill<=0.3.4" future google-cloud-storage six "tensorflowjs<3.19" matplotlib "ipython<8.18.0" "tensorflow-datasets>=4.9,<5.0"
+          pip install crepe --no-build-isolation
           pip install pytest ruff
         env:
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
