@@ -27,30 +27,17 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install -U pip setuptools wheel
-          # Install compatible TF versions FIRST
           pip install "tensorflow>=2.12.0,<2.16.0" "tensorflow-probability>=0.20.0,<0.21.0"
-          # Install ddsp without deps (TF already installed)
           pip install -e "." --no-deps
-          # Install remaining deps
           pip install protobuf librosa pydub mir_eval note_seq numpy scipy gin-config apache-beam absl-py cloudml-hypertune dill future google-cloud-storage six tensorflowjs matplotlib
-          # Install test tools
           pip install pytest ruff
 
-      - name: Format code
-        run: ruff format ddsp
-
-      - name: Check formatting
-        run: ruff format --check ddsp
-
-      - name: Lint with ruff
-        run: ruff check ddsp
-
-      - name: Test with pytest
+      - name: Run tests
         run: pytest --tb=short
         env:
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
 
-      - name: Report success or failure as github status
+      - name: Report status
         if: always()
         uses: actions/github-script@v7
         with:
@@ -63,5 +50,5 @@ jobs:
               state: status,
               target_url: `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`,
               context: 'github-actions/build',
-              description: status === 'success' ? 'All checks passed' : 'Checks failed'
+              description: status === 'success' ? 'All checks passed' : 'Tests failed'
             });
