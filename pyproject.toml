@@ -24,40 +24,29 @@ classifiers = [
 ]
 requires-python = ">=3.11,<3.13"
 dependencies = [
-    # Core ML - Using stable versions from original magenta/ddsp
-    # Pin protobuf to avoid dependency issues
-    "protobuf<=3.20",
-    "tensorflow>=2.11,<2.16",
-    "tensorflow-probability>=0.18,<0.22",
-    "tensorflow-datasets>=4.9,<5.0",
-    # Audio/Signal Processing
-    "librosa>=0.10,<0.11",
-    # Crepe: use older version that builds reliably
-    "crepe<=0.0.13",
-    "pydub<=0.25.1",
-    "mir_eval<=0.7",
-    "note_seq<0.0.4",
-    # Numerical
-    "numpy<1.24",
-    "scipy>=1.10.1,<1.12",
-    # Configuration
-    "gin-config>=0.3.0",
-    "apache-beam",
-    # Utilities
     "absl-py",
+    "apache-beam",
     "cloudml-hypertune<=0.1.0.dev6",
+    "crepe<=0.0.13",
     "dill<=0.3.4",
     "future",
+    "gin-config>=0.3.0",
     "google-cloud-storage",
+    "librosa>=0.10,<0.11",
+    "protobuf<=3.20",
+    "mir_eval<=0.7",
+    "note_seq<0.0.4",
+    "numpy<1.24",
+    "scipy>=1.10.1,<1.12",
     "six",
+    "tensorflow>=2.11,<2.16",
     "tensorflowjs<3.19",
-    # Visualization
+    "tensorflow-probability>=0.18,<0.22",
+    "tensorflow-datasets>=4.9,<5.0",
     "matplotlib>=3.0",
 ]
 
 [project.optional-dependencies]
-# CUDA support (install with: pip install ddsp[cuda] or uv pip install -e ".[cuda]")
-# These are optional - library works on CPU without them
 cuda = [
     "nvidia-cudnn-cu12>=8.9,<9.0",
     "nvidia-cublas-cu12>=12.0,<13.0",
@@ -70,32 +59,11 @@ cuda = [
     "nvidia-cusparse-cu12>=12.0,<13.0",
     "nvidia-nvjitlink-cu12>=12.0,<13.0",
 ]
-# GPU support alias (same as cuda)
-gpu = [
-    "ddsp[cuda]",
-]
-tflite = [
-    "tflite_support<=0.1;python_version<='3.8'",
-]
-gcp = [
-    "gevent",
-    "google-api-python-client",
-    "google-compute-engine",
-    "oauth2client",
-]
-data_preparation = [
-    "apache_beam",
-    "pyparsing<=2.4.7",
-]
-dev = [
-    "pytest>=8.0",
-    "ruff>=0.3.0",
-    "uv",
-]
-test = [
-    "pytest>=8.0",
-    "ruff>=0.3.0",
-]
+gpu = ["ddsp[cuda]"]
+gcp = ["gevent", "google-api-python-client", "google-compute-engine", "oauth2client"]
+data_preparation = ["apache_beam", "pyparsing<=2.4.7"]
+dev = ["pytest>=8.0", "ruff>=0.3.0", "uv"]
+test = ["pytest>=8.0", "ruff>=0.3.0"]
 
 [project.scripts]
 ddsp_export = "ddsp.training.ddsp_export:console_entry_point"
@@ -124,23 +92,8 @@ line-length = 80
 indent-width = 2
 
 [tool.ruff.lint]
-select = [
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
-    "F",   # Pyflakes
-    "I",   # isort
-    "N",   # pep8-naming
-    "UP",  # pyupgrade
-    "B",   # flake8-bugbear
-    "C4",  # flake8-comprehensions
-    "SIM", # flake8-simplify
-]
-ignore = [
-    "E111",  # Indentation is not a multiple of four (we use 2)
-    "E114",  # Indentation is not a multiple of four (comment)
-    "E501",  # Line too long (handled by formatter)
-    "UP015", # Unnecessary open mode parameters (may be intentional)
-]
+select = ["E", "W", "F", "I", "N", "UP", "B", "C4", "SIM"]
+ignore = ["E111", "E114", "E501", "UP015"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -157,8 +110,4 @@ python_files = ["*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "--tb=short -v"
-filterwarnings = [
-    "ignore::DeprecationWarning",
-    "ignore::PendingDeprecationWarning",
-    "ignore::FutureWarning",
-]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::PendingDeprecationWarning", "ignore::FutureWarning"]
