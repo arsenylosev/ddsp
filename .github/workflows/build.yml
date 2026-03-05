@@ -31,13 +31,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg libsndfile1
 
-      - name: Install setuptools<70 for crepe build
-        run: |
-          uv pip install "setuptools<70" --system
-
       - name: Install dependencies
         run: |
-          uv sync --extra data_preparation --extra test
+          # Pre-install setuptools for crepe build compatibility
+          pip install "setuptools<70"
+          uv pip install -e ".[data_preparation,test]"
 
       - name: Check formatting
         run: uv run ruff format --check ddsp
