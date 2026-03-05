@@ -30,33 +30,29 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg libsndfile1
 
-      - name: Create venv and install TensorFlow
+      - name: Create venv and install dependencies
         run: |
           uv venv --python 3.11
-          # Install compatible TF versions FIRST
-          uv pip install "tensorflow>=2.12.0,<2.16.0" "tensorflow-probability>=0.20.0,<0.21.0"
-
-      - name: Install DDSP package
-        run: |
-          # Install ddsp without deps (TF already installed)
-          uv pip install -e "." --no-deps
+          # Install compatible TF versions FIRST (Python 3.11 only)
+          uv pip install --python 3.11 "tensorflow>=2.12.0,<2.16.0" "tensorflow-probability>=0.20.0,<0.21.0"
+          # Install ddsp without deps
+          uv pip install --python 3.11 -e "." --no-deps
           # Install remaining deps
-          uv pip install protobuf librosa pydub mir_eval note_seq numpy scipy gin-config apache-beam absl-py cloudml-hypertune dill future google-cloud-storage six tensorflowjs matplotlib
-
-      - name: Install test tools
-        run: uv pip install pytest ruff
+          uv pip install --python 3.11 protobuf librosa pydub mir_eval note_seq numpy scipy gin-config apache-beam absl-py cloudml-hypertune dill future google-cloud-storage six tensorflowjs matplotlib
+          # Install test tools
+          uv pip install --python 3.11 pytest ruff
 
       - name: Format code
-        run: uv run ruff format ddsp
+        run: uv run --python 3.11 ruff format ddsp
 
       - name: Check formatting
-        run: uv run ruff format --check ddsp
+        run: uv run --python 3.11 ruff format --check ddsp
 
       - name: Lint with ruff
-        run: uv run ruff check ddsp
+        run: uv run --python 3.11 ruff check ddsp
 
       - name: Test with pytest
-        run: uv run pytest --tb=short
+        run: uv run --python 3.11 pytest --tb=short
         env:
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
 
