@@ -18,7 +18,7 @@ jobs:
         uses: astral-sh/setup-uv@v4
         with:
           version: "0.5.x"
-          enable-cache: true
+          enable-cache: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -33,14 +33,14 @@ jobs:
       - name: Create venv and install TensorFlow
         run: |
           uv venv --python 3.11
-          # Install compatible TF versions FIRST (before other deps)
+          # Install compatible TF versions FIRST
           uv pip install "tensorflow>=2.12.0,<2.16.0" "tensorflow-probability>=0.20.0,<0.21.0"
 
       - name: Install DDSP package
         run: |
           # Install ddsp without deps (TF already installed)
           uv pip install -e "." --no-deps
-          # Install remaining deps EXCEPT tensorflow
+          # Install remaining deps
           uv pip install protobuf librosa pydub mir_eval note_seq numpy scipy gin-config apache-beam absl-py cloudml-hypertune dill future google-cloud-storage six tensorflowjs matplotlib
 
       - name: Install test tools
