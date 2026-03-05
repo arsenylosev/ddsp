@@ -150,9 +150,5 @@ filterwarnings = [
     "ignore::FutureWarning",
 ]
 
-[tool.uv.extra-build-dependencies]
-# crepe>=0.0.16 uses deprecated pkg_resources (removed in setuptools>=70).
-# Due to uv build isolation limitations, pre-install crepe manually:
-#   uv pip install "setuptools<70" && uv pip install crepe>=0.0.16 --no-build-isolation
-# Then run: uv sync --extra data_preparation --extra test
-crepe = ["setuptools<70", "pkg_resources"]
+[tool.uv]
+build-constraint-dependencies = ["setuptools<70", "wheel"]
